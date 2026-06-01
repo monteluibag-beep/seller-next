@@ -8,14 +8,14 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Product, Sale, Offer } from '@/types';
 
-// Dynamic import to avoid SSR issues with recharts
-const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
-const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
-const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
-const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
-const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
-const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
-const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
+const SalesCharts = dynamic(() => import('@/components/SalesCharts'), {
+  ssr: false,
+  loading: () => (
+    <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,.3)', fontSize: 13 }}>
+      Grafik yükleniyor...
+    </div>
+  ),
+});
 
 const MONTHS_TR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 
@@ -187,78 +187,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Charts */}
-        <div className="grid-2" style={{ marginBottom: 16 }}>
-          {/* Monthly Revenue Bar Chart */}
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">Aylık Ciro (Son 12 Ay)</div>
-            </div>
-            <div style={{ height: 220, marginTop: 8 }}>
-              {loading ? (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats?.monthlyData ?? []} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" vertical={false} />
-                    <XAxis dataKey="ay" tick={{ fill: 'rgba(255,255,255,.4)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: 'rgba(255,255,255,.4)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}B` : String(v)} />
-                    <Tooltip
-                      contentStyle={{ background: '#222', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, fontSize: 12 }}
-                      labelStyle={{ color: '#fff', fontWeight: 700 }}
-                      formatter={(value: unknown) => [`₺${Number(value ?? 0).toLocaleString('tr-TR')}`, 'Ciro']}
-                    />
-                    <Bar dataKey="ciro" fill="#E85D04" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-
-          {/* Year Comparison */}
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">Yıllık Karşılaştırma</div>
-            </div>
-            {loading ? (
-              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
-            ) : (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                  <div style={{ background: 'rgba(232,93,4,.08)', border: '1px solid rgba(232,93,4,.2)', borderRadius: 10, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>Bu Yıl</div>
-                    <div style={{ fontWeight: 800, fontSize: 20, color: '#E85D04' }}>{formatTRY(stats?.thisYearTotal ?? 0)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{new Date().getFullYear()}</div>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>Geçen Yıl</div>
-                    <div style={{ fontWeight: 800, fontSize: 20, color: 'var(--text-2)' }}>{formatTRY(stats?.lastYearTotal ?? 0)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{new Date().getFullYear() - 1}</div>
-                  </div>
-                </div>
-                <div style={{ height: 90 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[
-                        { yil: String(new Date().getFullYear() - 1), toplam: Math.round(stats?.lastYearTotal ?? 0) },
-                        { yil: String(new Date().getFullYear()), toplam: Math.round(stats?.thisYearTotal ?? 0) },
-                      ]}
-                      margin={{ top: 4, right: 8, left: -10, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" vertical={false} />
-                      <XAxis dataKey="yil" tick={{ fill: 'rgba(255,255,255,.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis hide />
-                      <Tooltip
-                        contentStyle={{ background: '#222', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, fontSize: 12 }}
-                        formatter={(value: unknown) => [`₺${Number(value ?? 0).toLocaleString('tr-TR')}`, 'Toplam Ciro']}
-                      />
-                      <Bar dataKey="toplam" fill="#E85D04" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        {!loading && stats && (
+          <SalesCharts
+            monthlyData={stats.monthlyData}
+            yearData={[
+              { yil: String(new Date().getFullYear() - 1), toplam: Math.round(stats.lastYearTotal) },
+              { yil: String(new Date().getFullYear()), toplam: Math.round(stats.thisYearTotal) },
+            ]}
+          />
+        )}
 
         <div className="grid-2">
           <div className="card">

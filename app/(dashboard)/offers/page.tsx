@@ -241,6 +241,16 @@ export default function OffersPage() {
       const html = generateOfferHtml(offer, getFirmInfo(logo));
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
+
+      // iOS Safari blob URL'yi iframe'de gösteremiyor — yeni sekmede aç
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        const w = window.open(url, '_blank');
+        if (!w) alert('Lütfen pop-up engelleyicisini kapatın.');
+        setPdfLoading(null);
+        return;
+      }
+
       setPdfPreview({ url, filename: `Teklif-${offer.no}.pdf`, offer });
     } catch (err) {
       console.error('Önizleme hatası:', err);
