@@ -302,7 +302,8 @@ export default function OffersPage() {
 
       <div className="page-content">
         <div className="card">
-          <div className="table-wrap">
+          {/* Desktop table */}
+          <div className="table-wrap mob-hide-table">
             {loading ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
             ) : offers.length === 0 ? (
@@ -374,6 +375,59 @@ export default function OffersPage() {
                 </tbody>
               </table>
             )}
+          </div>
+
+          {/* Mobile card list */}
+          <div className="mob-card-list" style={{ padding: '4px 0' }}>
+            {loading ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
+            ) : offers.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Teklif bulunamadı</div>
+            ) : offers.map(o => {
+              const offerSym = CURRENCY_SYMBOLS[(o as Offer & {currency?: Currency}).currency ?? 'TRY'] ?? '₺';
+              return (
+                <div key={o.id} style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', marginBottom: 2 }}>{o.customer}</div>
+                      <code style={{ fontSize: 10, background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4, color: 'var(--text-3)' }}>{o.no}</code>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--or)' }}>{offerSym}{o.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{formatDate(o.date)}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      {o.status === 'pending'
+                        ? <span className="badge badge-amber">Bekliyor</span>
+                        : o.status === 'approved'
+                        ? <span className="badge badge-green">Onaylandı</span>
+                        : <span className="badge badge-red">Reddedildi</span>
+                      }
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setViewId(o.id!)} title="Görüntüle"><IconFileText size={13} /></button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => openPdfPreview(o)}
+                        disabled={pdfLoading === o.id}
+                        title="PDF"
+                      >
+                        {pdfLoading === o.id ? <IconLoader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <IconPrinter size={13} />}
+                      </button>
+                      {o.status === 'pending' && (
+                        <>
+                          <button className="btn btn-sm" style={{ background: 'rgba(34,197,94,.12)', color: '#4ADE80' }} onClick={() => approve(o.id!)} title="Onayla"><IconCheck size={13} /></button>
+                          <button className="btn btn-sm" style={{ background: 'rgba(239,68,68,.1)', color: '#F87171' }} onClick={() => reject(o.id!)} title="Reddet"><IconX size={13} /></button>
+                        </>
+                      )}
+                      <button className="btn btn-sm" style={{ background: 'rgba(239,68,68,.1)', color: '#F87171' }} onClick={() => removeOffer(o.id!)} title="Sil"><IconTrash size={13} /></button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -702,57 +756,58 @@ export default function OffersPage() {
           }}
         >
           {/* Top bar */}
-          <div style={{
+          <div className="pdf-modal-bar" style={{
             width: '100%', background: 'var(--surface)',
             borderBottom: '1px solid var(--border)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '10px 20px', flexShrink: 0,
+            padding: '10px 20px', flexShrink: 0, gap: 8,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <IconFileText size={18} color="var(--or)" />
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{pdfPreview.offer.no}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{pdfPreview.offer.customer}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+              <IconFileText size={18} color="var(--or)" style={{ flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pdfPreview.offer.no}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pdfPreview.offer.customer}</div>
               </div>
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               {/* Download */}
               <button
-                className="btn btn-secondary btn-sm"
+                className="btn btn-secondary btn-sm btn-icon-only"
                 onClick={downloadCurrentPdf}
                 title="PDF olarak kaydet"
+                style={{ display: 'flex', alignItems: 'center', gap: 5 }}
               >
-                <IconPrinter size={14} /> PDF Kaydet
+                <IconPrinter size={14} /> <span className="btn-label">PDF Kaydet</span>
               </button>
 
               {/* WhatsApp */}
               <button
                 onClick={whatsappFromPreview}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
+                  display: 'flex', alignItems: 'center', gap: 5,
                   background: '#25D366', color: '#fff',
-                  border: 'none', borderRadius: 8, padding: '6px 14px',
+                  border: 'none', borderRadius: 8, padding: '6px 12px',
                   cursor: 'pointer', fontWeight: 600, fontSize: 13,
                 }}
                 title="WhatsApp'ta Paylaş"
               >
-                <IconBrandWhatsapp size={15} /> WhatsApp
+                <IconBrandWhatsapp size={15} /> <span className="btn-label">WhatsApp</span>
               </button>
 
               {/* Email */}
               <button
                 onClick={emailFromPreview}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
+                  display: 'flex', alignItems: 'center', gap: 5,
                   background: '#3B82F6', color: '#fff',
-                  border: 'none', borderRadius: 8, padding: '6px 14px',
+                  border: 'none', borderRadius: 8, padding: '6px 12px',
                   cursor: 'pointer', fontWeight: 600, fontSize: 13,
                 }}
                 title="E-posta Gönder"
               >
-                <IconMail size={15} /> E-posta
+                <IconMail size={15} /> <span className="btn-label">E-posta</span>
               </button>
 
               {/* Close */}
@@ -762,7 +817,7 @@ export default function OffersPage() {
                   background: 'rgba(255,255,255,.08)', border: '1px solid var(--border-2)',
                   borderRadius: 8, width: 34, height: 34,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: 'var(--text-3)', marginLeft: 4,
+                  cursor: 'pointer', color: 'var(--text-3)',
                 }}
               >
                 <IconX size={16} />
@@ -771,20 +826,17 @@ export default function OffersPage() {
           </div>
 
           {/* PDF iframe */}
-          <div style={{ flex: 1, width: '100%', maxWidth: 900, padding: '16px 20px 20px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, width: '100%', maxWidth: 900, padding: '12px 16px 16px', display: 'flex', flexDirection: 'column' }}>
             <iframe
               src={pdfPreview.url}
               style={{
                 flex: 1, width: '100%', border: 'none',
                 borderRadius: 10, background: '#fff',
                 minHeight: 0,
+                height: 'calc(100vh - 60px)',
               }}
               title={pdfPreview.filename}
             />
-            {/* Mobile hint */}
-            <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: 'var(--text-3)' }}>
-              📱 Mobilde görüntülemek için <strong style={{ color: 'var(--text-2)' }}>İndir</strong> butonunu kullanın · WhatsApp&apos;a gönderirken PDF&apos;i eke ekleyin
-            </div>
           </div>
         </div>
       )}

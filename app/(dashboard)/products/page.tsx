@@ -257,7 +257,8 @@ export default function ProductsPage() {
               </button>
             </div>
           </div>
-          <div className="table-wrap">
+          {/* Desktop table */}
+          <div className="table-wrap mob-hide-table">
             {loading ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
             ) : filtered.length === 0 ? (
@@ -314,6 +315,44 @@ export default function ProductsPage() {
                 </tbody>
               </table>
             )}
+          </div>
+
+          {/* Mobile card list */}
+          <div className="mob-card-list" style={{ padding: '8px 0' }}>
+            {loading ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
+            ) : filtered.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Ürün bulunamadı</div>
+            ) : filtered.map(p => (
+              <div key={p.id} style={{
+                display: 'flex', gap: 12, padding: '12px 14px',
+                borderBottom: '1px solid var(--border)', alignItems: 'center',
+              }}>
+                {/* Photo */}
+                {p.photo
+                  ? <img src={p.photo} alt={p.name} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                  : <div style={{ width: 52, height: 52, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconPhoto size={20} color="var(--text-3)" /></div>
+                }
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', marginBottom: 3 }}>{p.name}</div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {p.code && <code style={{ background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4, fontSize: 10, color: 'var(--text-2)' }}>{p.code}</code>}
+                    {p.catName && <span className="badge badge-blue" style={{ fontSize: 10 }}>{p.catName}</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 12 }}>
+                    <span style={{ color: 'var(--text-3)' }}>Liste: <strong style={{ color: 'var(--text-1)' }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</strong></span>
+                    <span style={{ color: 'var(--text-3)' }}>Stok: <strong style={{ color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</strong></span>
+                  </div>
+                </div>
+                {/* Actions */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} title="Düzenle"><IconEdit size={13} /></button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => openCopy(p)} title="Kopyala" style={{ color: 'var(--or)' }}><IconCopy size={13} /></button>
+                  <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.1)', color: '#F87171' }} onClick={() => remove(p.id!)} title="Sil"><IconTrash size={13} /></button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

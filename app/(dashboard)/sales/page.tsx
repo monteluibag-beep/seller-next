@@ -140,7 +140,8 @@ export default function SalesPage() {
 
       <div className="page-content">
         <div className="card">
-          <div className="table-wrap">
+          {/* Desktop table */}
+          <div className="table-wrap mob-hide-table">
             {loading ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Yükleniyor...</div>
             ) : sales.length === 0 ? (
@@ -180,6 +181,36 @@ export default function SalesPage() {
                 </tbody>
               </table>
             )}
+          </div>
+
+          {/* Mobile card list */}
+          <div className="mob-card-list" style={{ padding: '4px 0' }}>
+            {loading ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Yükleniyor...</div>
+            ) : sales.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Satış kaydı bulunamadı</div>
+            ) : sales.map(s => (
+              <div key={s.id} style={{
+                padding: '14px 16px',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', marginBottom: 4 }}>{s.customer}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 4 }}>{formatDate(s.date)}</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--or)' }}>₺{s.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                    {s.status === 'completed'
+                      ? <span className="badge badge-green">Tamamlandı</span>
+                      : s.status === 'pending'
+                      ? <span className="badge badge-amber">Bekliyor</span>
+                      : <span className="badge badge-red">İptal</span>
+                    }
+                  </div>
+                </div>
+                <button className="btn btn-secondary btn-sm" onClick={() => setDetailId(s.id!)}>Detay</button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
