@@ -18,6 +18,14 @@ declare global {
   }
 }
 
+// iOS Safari ve diğer tarayıcılar için polyfill yükle
+async function ensureBarcodeDetector() {
+  if (!('BarcodeDetector' in window)) {
+    const { BarcodeDetector } = await import('barcode-detector');
+    (window as unknown as Record<string, unknown>).BarcodeDetector = BarcodeDetector;
+  }
+}
+
 export default function BarcodeScanner({ onDetect, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -58,9 +66,11 @@ export default function BarcodeScanner({ onDetect, onClose }: Props) {
 
   useEffect(() => {
     async function init() {
-      // BarcodeDetector desteği kontrolü
-      if (!('BarcodeDetector' in window)) {
-        setError('Tarayıcınız kamera taramayı desteklemiyor.\nChrome 83+ veya Edge 83+ kullanın.\n\nBarkodu elle girebilirsiniz.');
+      try {
+        // Polyfill yükle (iOS Safari dahil tüm tarayıcılarda çalışır)
+        await ensureBarcodeDetector();
+      } catch {
+        setError('Barkod okuyucu yüklenemedi.\nLütfen internet bağlantınızı kontrol edin.');
         setStatus('error');
         return;
       }
