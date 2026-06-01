@@ -309,7 +309,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="admin@caliskancanta.com"
+                  placeholder="E-posta adresinizi yazınız"
                   autoComplete="email"
                 />
               </div>
