@@ -1,8 +1,18 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
+
+async function fetchRole(uid: string): Promise<string | null> {
+  try {
+    const { doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('@/lib/firebase');
+    const snap = await getDoc(doc(db, 'users', uid));
+    return snap.exists() ? (snap.data().role as string) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,12 +23,8 @@ export function useAuth() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        try {
-          const snap = await getDoc(doc(db, 'users', u.uid));
-          setRole(snap.exists() ? (snap.data().role as string) : null);
-        } catch {
-          setRole(null);
-        }
+        const r = await fetchRole(u.uid);
+        setRole(r);
       } else {
         setRole(null);
       }
