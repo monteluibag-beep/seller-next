@@ -11,25 +11,26 @@ import {
   IconLayoutDashboard, IconPackage, IconStack2,
   IconReceipt, IconFileText, IconTag, IconUsers,
   IconSettings, IconLogout, IconMenu2,
-  IconChevronLeft, IconClipboardList, IconBuildingFactory2
+  IconChevronLeft, IconClipboardList, IconBuildingFactory2, IconListCheck
 } from '@tabler/icons-react';
 
-const navItems = [
-  { href: '/', label: 'Ana Ekran', icon: IconLayoutDashboard, group: 'Genel' },
-  { href: '/products', label: 'Ürünler', icon: IconPackage, group: 'Yönetim' },
-  { href: '/stock', label: 'Stoklar', icon: IconStack2, group: 'Yönetim' },
-  { href: '/sales', label: 'Satışlar', icon: IconReceipt, group: 'Yönetim' },
-  { href: '/offers', label: 'Teklifler', icon: IconFileText, group: 'Yönetim' },
-  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, group: 'Yönetim' },
-  { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, group: 'Yönetim' },
-  { href: '/categories', label: 'Kategoriler', icon: IconTag, group: 'Sistem' },
-  { href: '/users', label: 'Kullanıcılar', icon: IconUsers, group: 'Sistem' },
-  { href: '/settings', label: 'Ayarlar', icon: IconSettings, group: 'Sistem' },
+const ALL_NAV = [
+  { href: '/', label: 'Ana Ekran', icon: IconLayoutDashboard, group: 'Genel', roles: ['admin', 'sales'] },
+  { href: '/products', label: 'Ürünler', icon: IconPackage, group: 'Yönetim', roles: ['admin', 'sales'] },
+  { href: '/stock', label: 'Stoklar', icon: IconStack2, group: 'Yönetim', roles: ['admin', 'sales'] },
+  { href: '/sales', label: 'Satışlar', icon: IconReceipt, group: 'Yönetim', roles: ['admin', 'sales'] },
+  { href: '/offers', label: 'Teklifler', icon: IconFileText, group: 'Yönetim', roles: ['admin', 'sales'] },
+  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, group: 'Yönetim', roles: ['admin'] },
+  { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, group: 'Yönetim', roles: ['admin'] },
+  { href: '/my-tasks', label: 'İş Takip', icon: IconListCheck, group: 'Genel', roles: ['atolye'] },
+  { href: '/categories', label: 'Kategoriler', icon: IconTag, group: 'Sistem', roles: ['admin'] },
+  { href: '/users', label: 'Kullanıcılar', icon: IconUsers, group: 'Sistem', roles: ['admin'] },
+  { href: '/settings', label: 'Ayarlar', icon: IconSettings, group: 'Sistem', roles: ['admin'] },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { rates, updatedAt } = useRates();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -53,6 +54,7 @@ export default function Sidebar() {
     router.push('/login');
   };
 
+  const navItems = ALL_NAV.filter(i => !role || i.roles.includes(role));
   const groups = ['Genel', 'Yönetim', 'Sistem'];
   const initials = user?.email?.substring(0, 2).toUpperCase() || 'AD';
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'Admin';

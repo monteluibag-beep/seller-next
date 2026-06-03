@@ -7,25 +7,27 @@ import { auth } from '@/lib/firebase';
 import {
   IconX, IconLayoutDashboard, IconPackage, IconStack2,
   IconReceipt, IconFileText, IconTag, IconUsers,
-  IconSettings, IconLogout, IconClipboardList, IconBuildingFactory2
+  IconSettings, IconLogout, IconClipboardList, IconBuildingFactory2, IconListCheck
 } from '@tabler/icons-react';
 
-const navItems = [
-  { href: '/', label: 'Ana Ekran', icon: IconLayoutDashboard },
-  { href: '/products', label: 'Ürünler', icon: IconPackage },
-  { href: '/stock', label: 'Stoklar', icon: IconStack2 },
-  { href: '/sales', label: 'Satışlar', icon: IconReceipt },
-  { href: '/offers', label: 'Teklifler', icon: IconFileText },
-  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList },
-  { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2 },
-  { href: '/categories', label: 'Kategoriler', icon: IconTag },
-  { href: '/users', label: 'Kullanıcılar', icon: IconUsers },
-  { href: '/settings', label: 'Ayarlar', icon: IconSettings },
+const ALL_NAV = [
+  { href: '/', label: 'Ana Ekran', icon: IconLayoutDashboard, roles: ['admin', 'sales'] },
+  { href: '/products', label: 'Ürünler', icon: IconPackage, roles: ['admin', 'sales'] },
+  { href: '/stock', label: 'Stoklar', icon: IconStack2, roles: ['admin', 'sales'] },
+  { href: '/sales', label: 'Satışlar', icon: IconReceipt, roles: ['admin', 'sales'] },
+  { href: '/offers', label: 'Teklifler', icon: IconFileText, roles: ['admin', 'sales'] },
+  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, roles: ['admin'] },
+  { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, roles: ['admin'] },
+  { href: '/my-tasks', label: 'İş Takip', icon: IconListCheck, roles: ['atolye'] },
+  { href: '/categories', label: 'Kategoriler', icon: IconTag, roles: ['admin'] },
+  { href: '/users', label: 'Kullanıcılar', icon: IconUsers, roles: ['admin'] },
+  { href: '/settings', label: 'Ayarlar', icon: IconSettings, roles: ['admin'] },
 ];
 
 export default function Drawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const navItems = ALL_NAV.filter(i => !role || i.roles.includes(role));
   const router = useRouter();
 
   const handleLogout = async () => {

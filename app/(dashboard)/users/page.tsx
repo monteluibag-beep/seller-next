@@ -17,17 +17,19 @@ const ALL_PAGES: { key: PermissionKey; label: string }[] = [
   { key: 'categories', label: 'Kategoriler' },
   { key: 'users', label: 'Kullanıcılar' },
   { key: 'settings', label: 'Ayarlar' },
+  { key: 'tasks', label: 'İş Takip (Yönetim)' },
+  { key: 'my-tasks', label: 'İş Takip (Atölye)' },
 ];
 
 const DEFAULT_PERMS: Record<string, PermissionKey[]> = {
-  admin: ['products', 'stock', 'sales', 'offers', 'categories', 'users', 'settings'],
-  atolye: ['products', 'stock'],
+  admin: ['products', 'stock', 'sales', 'offers', 'categories', 'users', 'settings', 'tasks', 'my-tasks'],
+  atolye: ['my-tasks'],
   sales: ['products', 'offers', 'sales'],
 };
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
-  atolye: 'Atölye Müdürü',
+  atolye: 'Atölye',
   sales: 'Satış',
 };
 
@@ -247,7 +249,7 @@ export default function UsersPage() {
               <label className="form-label">Rol</label>
               <select className="form-input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as AppUser['role'] }))}>
                 <option value="admin">Admin (Tüm yetkiler)</option>
-                <option value="atolye">Atölye Müdürü (Maliyet, Stok)</option>
+                <option value="atolye">Atölye (Fason görev takibi)</option>
                 <option value="sales">Satış (Teklif, Satış)</option>
               </select>
             </div>
