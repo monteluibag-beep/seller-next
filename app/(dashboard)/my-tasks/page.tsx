@@ -52,11 +52,16 @@ export default function MyTasksPage() {
       const snap = await getDocs(
         query(
           collection(db, 'tasks'),
-          where('assignedTo', '==', user.uid),
-          orderBy('createdAt', 'desc')
+          where('assignedTo', '==', user.uid)
         )
       );
-      setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as Task)));
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Task));
+      all.sort((a, b) => {
+        const ta = (a.createdAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
+        const tb = (b.createdAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
+        return tb - ta;
+      });
+      setTasks(all);
     } catch (err) {
       console.error('My tasks load error:', err);
     } finally {

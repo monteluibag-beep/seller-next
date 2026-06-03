@@ -14,21 +14,25 @@ const ALL_PAGES: { key: PermissionKey; label: string }[] = [
   { key: 'stock', label: 'Stoklar' },
   { key: 'sales', label: 'Satışlar' },
   { key: 'offers', label: 'Teklifler' },
+  { key: 'fason', label: 'Fason Takip' },
+  { key: 'atolye', label: 'Atölyeler' },
+  { key: 'tasks', label: 'İş Takip (Yönetim)' },
+  { key: 'my-tasks', label: 'İş Takip (Atölye)' },
   { key: 'categories', label: 'Kategoriler' },
   { key: 'users', label: 'Kullanıcılar' },
   { key: 'settings', label: 'Ayarlar' },
-  { key: 'tasks', label: 'İş Takip (Yönetim)' },
-  { key: 'my-tasks', label: 'İş Takip (Atölye)' },
 ];
 
 const DEFAULT_PERMS: Record<string, PermissionKey[]> = {
-  admin: ['products', 'stock', 'sales', 'offers', 'categories', 'users', 'settings', 'tasks', 'my-tasks'],
+  admin: ['products', 'stock', 'sales', 'offers', 'fason', 'atolye', 'tasks', 'my-tasks', 'categories', 'users', 'settings'],
+  mudur: ['fason', 'atolye', 'tasks'],
   atolye: ['my-tasks'],
   sales: ['products', 'offers', 'sales'],
 };
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
+  mudur: 'Müdür',
   atolye: 'Atölye',
   sales: 'Satış',
 };
@@ -192,7 +196,7 @@ export default function UsersPage() {
                       </td>
                       <td style={{ color: '#888' }}>{u.email}</td>
                       <td>
-                        <span className={`badge ${u.role === 'admin' ? 'badge-blue' : u.role === 'atolye' ? 'badge-amber' : 'badge-green'}`}>
+                        <span className={`badge ${u.role === 'admin' ? 'badge-blue' : u.role === 'mudur' ? 'badge-purple' : u.role === 'atolye' ? 'badge-amber' : 'badge-green'}`}>
                           {ROLE_LABELS[u.role] ?? u.role}
                         </span>
                       </td>
@@ -256,7 +260,8 @@ export default function UsersPage() {
               <label className="form-label">Rol</label>
               <select className="form-input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as AppUser['role'] }))}>
                 <option value="admin">Admin (Tüm yetkiler)</option>
-                <option value="atolye">Atölye (Fason görev takibi)</option>
+                <option value="mudur">Müdür (Fason, Atölyeler, İş Takip)</option>
+                <option value="atolye">Atölye (Kendi görevleri)</option>
                 <option value="sales">Satış (Teklif, Satış)</option>
               </select>
             </div>
@@ -286,6 +291,7 @@ export default function UsersPage() {
                   <tr>
                     <th>Sayfa</th>
                     <th style={{ textAlign: 'center' }}>Admin</th>
+                    <th style={{ textAlign: 'center' }}>Müdür</th>
                     <th style={{ textAlign: 'center' }}>Atölye</th>
                     <th style={{ textAlign: 'center' }}>Satış</th>
                   </tr>
@@ -294,7 +300,7 @@ export default function UsersPage() {
                   {ALL_PAGES.map(page => (
                     <tr key={page.key}>
                       <td style={{ fontWeight: 500 }}>{page.label}</td>
-                      {(['admin', 'atolye', 'sales'] as const).map(role => (
+                      {(['admin', 'mudur', 'atolye', 'sales'] as const).map(role => (
                         <td key={role} style={{ textAlign: 'center' }}>
                           <input
                             type="checkbox"

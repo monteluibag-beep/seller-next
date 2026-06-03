@@ -74,7 +74,7 @@ export interface AppUser {
   id?: string;
   name: string;
   email: string;
-  role: 'admin' | 'atolye' | 'sales';
+  role: 'admin' | 'mudur' | 'atolye' | 'sales';
   uid: string;
   active: boolean;
 }
@@ -99,7 +99,7 @@ export interface Task {
 
 export type PermissionKey =
   | 'products' | 'stock' | 'sales' | 'offers'
-  | 'categories' | 'users' | 'settings' | 'tasks' | 'my-tasks';
+  | 'categories' | 'users' | 'settings' | 'tasks' | 'my-tasks' | 'fason' | 'atolye';
 
 export interface Permissions {
   admin: PermissionKey[];
