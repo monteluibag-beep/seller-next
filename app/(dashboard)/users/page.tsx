@@ -56,7 +56,14 @@ export default function UsersPage() {
   async function loadPerms() {
     try {
       const d = await getDoc(doc(db, 'settings', 'permissions'));
-      if (d.exists()) setPerms(d.data() as Record<string, PermissionKey[]>);
+      if (d.exists()) {
+        const raw = d.data() as Record<string, unknown>;
+        const normalized: Record<string, PermissionKey[]> = { ...DEFAULT_PERMS };
+        for (const key of Object.keys(raw)) {
+          normalized[key] = Array.isArray(raw[key]) ? (raw[key] as PermissionKey[]) : [];
+        }
+        setPerms(normalized);
+      }
     } catch {}
   }
 
@@ -122,7 +129,7 @@ export default function UsersPage() {
 
   function togglePerm(role: string, page: PermissionKey) {
     setPerms(p => {
-      const current = p[role] ?? [];
+      const current = Array.isArray(p[role]) ? p[role] : [];
       const next = current.includes(page) ? current.filter(x => x !== page) : [...current, page];
       return { ...p, [role]: next };
     });
@@ -291,7 +298,7 @@ export default function UsersPage() {
                         <td key={role} style={{ textAlign: 'center' }}>
                           <input
                             type="checkbox"
-                            checked={(perms[role] ?? []).includes(page.key)}
+                            checked={(Array.isArray(perms[role]) ? perms[role] : []).includes(page.key)}
                             onChange={() => togglePerm(role, page.key)}
                             disabled={role === 'admin'}
                             style={{ width: 16, height: 16, cursor: role === 'admin' ? 'default' : 'pointer' }}
