@@ -7,7 +7,7 @@ import { auth } from '@/lib/firebase';
 import {
   IconX, IconLayoutDashboard, IconPackage, IconStack2,
   IconReceipt, IconFileText, IconTag, IconUsers,
-  IconSettings, IconLogout
+  IconSettings, IconLogout, IconClipboardList, IconBuildingFactory2
 } from '@tabler/icons-react';
 
 const navItems = [
@@ -16,6 +16,8 @@ const navItems = [
   { href: '/stock', label: 'Stoklar', icon: IconStack2 },
   { href: '/sales', label: 'Satışlar', icon: IconReceipt },
   { href: '/offers', label: 'Teklifler', icon: IconFileText },
+  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList },
+  { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2 },
   { href: '/categories', label: 'Kategoriler', icon: IconTag },
   { href: '/users', label: 'Kullanıcılar', icon: IconUsers },
   { href: '/settings', label: 'Ayarlar', icon: IconSettings },
