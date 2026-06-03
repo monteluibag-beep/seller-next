@@ -11,7 +11,7 @@ import {
   IconLayoutDashboard, IconPackage, IconStack2,
   IconReceipt, IconFileText, IconTag, IconUsers,
   IconSettings, IconLogout, IconMenu2,
-  IconChevronLeft
+  IconChevronLeft, IconClipboardList, IconBuildingFactory2
 } from '@tabler/icons-react';
 
 const navItems = [
@@ -20,6 +20,8 @@ const navItems = [
   { href: '/stock', label: 'Stoklar', icon: IconStack2, group: 'Yönetim' },
   { href: '/sales', label: 'Satışlar', icon: IconReceipt, group: 'Yönetim' },
   { href: '/offers', label: 'Teklifler', icon: IconFileText, group: 'Yönetim' },
+  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, group: 'Yönetim' },
+  { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, group: 'Yönetim' },
   { href: '/categories', label: 'Kategoriler', icon: IconTag, group: 'Sistem' },
   { href: '/users', label: 'Kullanıcılar', icon: IconUsers, group: 'Sistem' },
   { href: '/settings', label: 'Ayarlar', icon: IconSettings, group: 'Sistem' },
