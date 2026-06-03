@@ -79,9 +79,27 @@ export interface AppUser {
   active: boolean;
 }
 
+export interface Task {
+  id?: string;
+  title: string;
+  description: string;
+  assignedTo: string;
+  assignedToName: string;
+  price: number;
+  showPriceToWorkshop: boolean;
+  status: 'todo' | 'in_progress' | 'done';
+  category: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: unknown;
+  startedAt: unknown;
+  completedAt: unknown;
+  note: string;
+}
+
 export type PermissionKey =
   | 'products' | 'stock' | 'sales' | 'offers'
-  | 'categories' | 'users' | 'settings';
+  | 'categories' | 'users' | 'settings' | 'tasks' | 'my-tasks';
 
 export interface Permissions {
   admin: PermissionKey[];
