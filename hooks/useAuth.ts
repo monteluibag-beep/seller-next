@@ -5,10 +5,11 @@ import { auth } from '@/lib/firebase';
 
 async function fetchRole(uid: string): Promise<string | null> {
   try {
-    const { doc, getDoc } = await import('firebase/firestore');
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
     const { db } = await import('@/lib/firebase');
-    const snap = await getDoc(doc(db, 'users', uid));
-    return snap.exists() ? (snap.data().role as string) : null;
+    const snap = await getDocs(query(collection(db, 'users'), where('uid', '==', uid)));
+    if (snap.empty) return null;
+    return (snap.docs[0].data().role as string) ?? null;
   } catch {
     return null;
   }
