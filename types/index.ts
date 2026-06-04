@@ -25,6 +25,8 @@ export interface Sale {
   date: unknown;
   status: 'completed' | 'pending' | 'cancelled';
   note?: string;
+  discountRate?: number;
+  by?: string;
 }
 
 export interface StockMove {
@@ -101,7 +103,7 @@ export interface Task {
 
 export type PermissionKey =
   | 'products' | 'stock' | 'sales' | 'offers'
-  | 'categories' | 'users' | 'settings' | 'tasks' | 'my-tasks' | 'fason' | 'atolye';
+  | 'categories' | 'users' | 'settings' | 'tasks' | 'my-tasks' | 'fason' | 'atolye' | 'payment';
 
 export interface Permissions {
   admin: PermissionKey[];

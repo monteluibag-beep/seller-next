@@ -126,6 +126,124 @@ export default function SalesPage() {
 
   const detailSale = sales.find(s => s.id === detailId);
 
+  async function openSalePDF(sale: Sale) {
+    let firmName = '', firmAddress = '', firmPhone = '', firmEmail = '', bankInfo = '';
+    try {
+      const { getDoc, doc: fDoc } = await import('firebase/firestore');
+      const snap = await getDoc(fDoc(db, 'settings', 'main'));
+      if (snap.exists()) {
+        const d = snap.data();
+        firmName = d.firmName || '';
+        firmAddress = d.firmAddress || '';
+        firmPhone = d.firmPhone || '';
+        firmEmail = d.firmEmail || '';
+        bankInfo = d.bankInfo || '';
+      }
+    } catch {}
+
+    const saleNo = (sale.id || '').slice(-6).toUpperCase();
+    const saleDate = formatDate(sale.date);
+    const discRate = sale.discountRate ?? 0;
+    const subtotalAmt = sale.items.reduce((s, i) => s + i.price * i.qty, 0);
+    const discountAmt = discRate > 0 ? subtotalAmt * discRate / 100 : 0;
+
+    const itemRows = sale.items.map(item => `
+      <tr>
+        <td>${item.name}</td>
+        <td style="text-align:center">${item.qty}</td>
+        <td style="text-align:right">₺${item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+        <td style="text-align:right">₺${(item.price * item.qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+      </tr>`).join('');
+
+    const discountRows = discRate > 0 ? `
+      <tr style="color:#555">
+        <td colspan="3" style="text-align:right;padding-top:6px">Ara Toplam:</td>
+        <td style="text-align:right;padding-top:6px">₺${subtotalAmt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+      </tr>
+      <tr style="color:#16A34A">
+        <td colspan="3" style="text-align:right">İskonto (%${discRate}):</td>
+        <td style="text-align:right">-₺${discountAmt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+      </tr>` : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<title>Satış Fişi - ${saleNo}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; background: #fff; }
+  .page { width: 210mm; min-height: 297mm; padding: 16mm 18mm; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 3px solid #E85D04; padding-bottom: 16px; }
+  .logo img { height: 60px; object-fit: contain; }
+  .firm-info { text-align: right; font-size: 12px; color: #444; line-height: 1.6; }
+  .firm-name { font-size: 17px; font-weight: 700; color: #E85D04; }
+  .sale-title { font-size: 22px; font-weight: 800; color: #E85D04; margin-bottom: 16px; }
+  .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 24px; font-size: 13px; }
+  .meta-item { display: flex; gap: 8px; }
+  .meta-label { font-weight: 600; color: #555; min-width: 90px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #E85D04; color: #fff; padding: 9px 12px; text-align: left; font-size: 12px; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .total-row td { font-weight: 800; font-size: 16px; color: #E85D04; border-top: 2px solid #E85D04; border-bottom: none; }
+  .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+  .bank-info { background: #fff8f0; border: 1px solid #fcd9b0; border-radius: 6px; padding: 10px 14px; margin-top: 12px; font-size: 12px; white-space: pre-line; }
+  @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="logo"><img src="/logo.png" alt="Logo" onerror="this.style.display='none'" /></div>
+    <div class="firm-info">
+      <div class="firm-name">${firmName}</div>
+      ${firmAddress ? `<div>${firmAddress}</div>` : ''}
+      ${firmPhone ? `<div>${firmPhone}</div>` : ''}
+      ${firmEmail ? `<div>${firmEmail}</div>` : ''}
+    </div>
+  </div>
+
+  <div class="sale-title">SATIŞ FİŞİ</div>
+
+  <div class="meta">
+    <div class="meta-item"><span class="meta-label">Müşteri:</span><span>${sale.customer}</span></div>
+    <div class="meta-item"><span class="meta-label">Fiş No:</span><span>#${saleNo}</span></div>
+    <div class="meta-item"><span class="meta-label">Tarih:</span><span>${saleDate}</span></div>
+    ${sale.by ? `<div class="meta-item"><span class="meta-label">Hazırlayan:</span><span>${sale.by}</span></div>` : ''}
+    ${sale.note ? `<div class="meta-item"><span class="meta-label">Not:</span><span>${sale.note}</span></div>` : ''}
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Ürün Adı</th><th style="text-align:center">Adet</th><th style="text-align:right">Birim Fiyat</th><th style="text-align:right">Toplam</th></tr>
+    </thead>
+    <tbody>
+      ${itemRows}
+      ${discountRows}
+      <tr class="total-row">
+        <td colspan="3" style="text-align:right">GENEL TOPLAM</td>
+        <td style="text-align:right">₺${sale.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    ${bankInfo ? `<div><strong>Banka / Ödeme Bilgileri:</strong></div><div class="bank-info">${bankInfo}</div>` : ''}
+    <div style="margin-top:16px;text-align:center;font-size:13px;color:#E85D04;font-weight:600">Teşekkür ederiz!</div>
+  </div>
+</div>
+<script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+    }
+  }
+
   return (
     <>
       <div className="topbar">
@@ -174,7 +292,10 @@ export default function SalesPage() {
                       </td>
                       <td style={{ color: '#888', fontSize: 12 }}>{formatDate(s.date)}</td>
                       <td>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setDetailId(s.id!)}>Detay</button>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setDetailId(s.id!)}>Detay</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => openSalePDF(s)} title="PDF İndir / Yazdır" style={{ color: '#E85D04' }}>PDF</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -362,6 +483,12 @@ export default function SalesPage() {
             </table>
             <div style={{ textAlign: 'right', fontWeight: 800, fontSize: 18 }}>
               Toplam: ₺{detailSale.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button className="btn btn-secondary" onClick={() => setDetailId(null)}>Kapat</button>
+              <button className="btn btn-primary" onClick={() => openSalePDF(detailSale)} style={{ background: '#E85D04' }}>
+                İndir / Yazdır
+              </button>
             </div>
           </div>
         </div>

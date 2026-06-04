@@ -37,7 +37,7 @@ function fmtDate(ts: unknown): string {
 }
 
 export default function FasonPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workers, setWorkers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -266,7 +266,7 @@ export default function FasonPage() {
                       </td>
                       <td style={{ fontWeight: 700, color: '#E85D04' }}>₺{(t.price ?? 0).toLocaleString('tr-TR')}</td>
                       <td>
-                        {t.status === 'done' && (
+                        {t.status === 'done' && (role === 'admin' || role === 'mudur') && (
                           <button
                             onClick={async () => {
                               await import('firebase/firestore').then(async ({ updateDoc, doc: fDoc, serverTimestamp }) => {
@@ -285,6 +285,11 @@ export default function FasonPage() {
                           >
                             {t.paid ? '✓ Ödendi' : 'Bekliyor'}
                           </button>
+                        )}
+                        {t.status === 'done' && role !== 'admin' && role !== 'mudur' && (
+                          <span style={{ fontSize: 11, color: t.paid ? '#065f46' : '#991b1b', fontWeight: 600 }}>
+                            {t.paid ? '✓ Ödendi' : 'Bekliyor'}
+                          </span>
                         )}
                       </td>
                       <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{fmtDate(t.createdAt)}</td>

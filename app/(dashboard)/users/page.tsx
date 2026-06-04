@@ -21,11 +21,12 @@ const ALL_PAGES: { key: PermissionKey; label: string }[] = [
   { key: 'categories', label: 'Kategoriler' },
   { key: 'users', label: 'Kullanıcılar' },
   { key: 'settings', label: 'Ayarlar' },
+  { key: 'payment', label: 'Ödeme Durumu (Fason)' },
 ];
 
 const DEFAULT_PERMS: Record<string, PermissionKey[]> = {
-  admin: ['products', 'stock', 'sales', 'offers', 'fason', 'atolye', 'tasks', 'my-tasks', 'categories', 'users', 'settings'],
-  mudur: ['fason', 'atolye', 'tasks'],
+  admin: ['products', 'stock', 'sales', 'offers', 'fason', 'atolye', 'tasks', 'my-tasks', 'categories', 'users', 'settings', 'payment'],
+  mudur: ['fason', 'atolye', 'tasks', 'payment'],
   atolye: ['my-tasks'],
   sales: ['products', 'offers', 'sales'],
 };
