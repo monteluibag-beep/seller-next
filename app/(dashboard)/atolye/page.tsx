@@ -51,6 +51,7 @@ function exportExcel(payments: Payment[], workerName?: string) {
 
 export default function AtölyelerPage() {
   const { user, role, loading: authLoading } = useAuth();
+  // authLoading is from useAuth
   const [workerStats, setWorkerStats] = useState<WorkerStat[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,8 +67,8 @@ export default function AtölyelerPage() {
   const [histOpen, setHistOpen] = useState(false);
   const [histWorker, setHistWorker] = useState<WorkerStat | null>(null);
 
-  // Only show pay buttons after auth is resolved
-  const canPay = !authLoading && (role === 'admin' || role === 'mudur');
+  // Show pay buttons for admin/mudur (null means still loading — show after resolve)
+  const canPay = role === 'admin' || role === 'mudur';
 
   useEffect(() => { loadAll(); }, []);
 
@@ -244,32 +245,28 @@ export default function AtölyelerPage() {
                   </div>
 
                   {/* Buttons */}
-                  <div style={{ display: 'grid', gridTemplateColumns: ws.workerPayments.length > 0 ? '1fr 1fr' : '1fr', gap: 8 }}>
-                    {canPay && (
-                      <button
-                        onClick={() => { setPayWorker(ws); setPayAmount(''); setPayNote(''); setPayOpen(true); }}
-                        style={{
-                          padding: '8px 0', background: '#10b981', color: '#fff', border: 'none',
-                          borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                        }}
-                      >
-                        <IconCoin size={14} /> Ödeme Yap
-                      </button>
-                    )}
-                    {ws.workerPayments.length > 0 && (
-                      <button
-                        onClick={() => { setHistWorker(ws); setHistOpen(true); }}
-                        style={{
-                          padding: '8px 0', background: 'var(--bg)', color: 'var(--text-2)',
-                          border: '1px solid var(--border)', borderRadius: 8,
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                        }}
-                      >
-                        <IconHistory size={14} /> Ödeme Geçmişi
-                      </button>
-                    )}
+                  <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                    <button
+                      onClick={() => { setPayWorker(ws); setPayAmount(''); setPayNote(''); setPayOpen(true); }}
+                      style={{
+                        width: '100%', padding: '9px 0', background: '#10b981', color: '#fff', border: 'none',
+                        borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      <IconCoin size={15} /> Ödeme Yap
+                    </button>
+                    <button
+                      onClick={() => { setHistWorker(ws); setHistOpen(true); }}
+                      style={{
+                        width: '100%', padding: '9px 0', background: 'var(--bg)', color: 'var(--text-2)',
+                        border: '1px solid var(--border)', borderRadius: 8,
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      <IconHistory size={15} /> Ödeme Geçmişi ({ws.workerPayments.length})
+                    </button>
                   </div>
                 </div>
               ))}
