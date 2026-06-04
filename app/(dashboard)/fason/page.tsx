@@ -88,13 +88,15 @@ export default function FasonPage() {
     loadAll();
   }
 
-  const filtered = tasks.filter(t => tab === 'all' || t.status === tab);
+  // Atolye users only see their own tasks
+  const visibleTasks = role === 'atolye' ? tasks.filter(t => t.assignedTo === user?.uid) : tasks;
+  const filtered = visibleTasks.filter(t => tab === 'all' || t.status === tab);
 
   const stats = {
-    total: tasks.length,
-    inProgress: tasks.filter(t => t.status === 'in_progress').length,
-    done: tasks.filter(t => t.status === 'done').length,
-    hakEdis: tasks.filter(t => t.status === 'done').reduce((s, t) => s + (t.price ?? 0), 0),
+    total: visibleTasks.length,
+    inProgress: visibleTasks.filter(t => t.status === 'in_progress').length,
+    done: visibleTasks.filter(t => t.status === 'done').length,
+    hakEdis: visibleTasks.filter(t => t.status === 'done').reduce((s, t) => s + (t.price ?? 0), 0),
   };
 
   // Atölye bazlı istatistik
@@ -183,11 +185,24 @@ export default function FasonPage() {
       <div className="topbar">
         <div>
           <div className="page-title">Fason Takip</div>
-          <div className="page-sub">{tasks.length} görev</div>
+          <div className="page-sub">{visibleTasks.length} görev</div>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>
-          <IconPlus size={16} /> Yeni Görev
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {canPay && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => { setPayWorker(null); setPayOpen(true); }}
+              style={{ background: '#10b981', color: '#fff', borderColor: '#10b981' }}
+            >
+              <IconCoin size={16} /> Ödeme Yap
+            </button>
+          )}
+          {(role === 'admin' || role === 'mudur') && (
+            <button className="btn btn-primary" onClick={openAdd}>
+              <IconPlus size={16} /> Yeni Görev
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="page-content">
@@ -214,41 +229,6 @@ export default function FasonPage() {
           </div>
         </div>
 
-        {/* Atölye bazlı özet */}
-        {workerStats.length > 0 && (
-          <div className="card" style={{ marginBottom: 20 }}>
-            <div className="card-header">
-              <div className="card-title">Atölye Bazlı Özet</div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: 12, padding: 16 }}>
-              {workerStats.map(w => (
-                <div key={w.uid} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border)' }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: 'var(--text-1)' }}>{w.name || w.email}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 2 }}>
-                    <span style={{ color: '#4ADE80' }}>✓ {w.done} tamamlandı</span><br />
-                    <span style={{ color: '#60A5FA' }}>▶ {w.inProg} devam ediyor</span><br />
-                    <span style={{ color: '#E85D04', fontWeight: 700 }}>₺{w.hakedis.toLocaleString('tr-TR')} hakediş</span><br />
-                    <span style={{ color: '#10b981' }}>₺{w.odenen.toLocaleString('tr-TR')} ödendi</span><br />
-                    <span style={{ color: w.kalan > 0 ? '#f59e0b' : '#6b7280', fontWeight: 700 }}>₺{w.kalan.toLocaleString('tr-TR')} kalan</span>
-                  </div>
-                  {canPay && (
-                    <button
-                      onClick={() => { setPayWorker(w as AppUser); setPayOpen(true); }}
-                      style={{
-                        marginTop: 10, width: '100%', padding: '6px 0',
-                        background: '#10b981', color: '#fff', border: 'none',
-                        borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                      }}
-                    >
-                      <IconCoin size={13} /> Ödeme Yap
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Tab + Görev Listesi */}
         <div className="card">
@@ -268,7 +248,7 @@ export default function FasonPage() {
               >
                 {t.label}
                 <span style={{ marginLeft: 6, fontSize: 11, background: 'var(--surface-2)', borderRadius: 10, padding: '1px 7px' }}>
-                  {t.key === 'all' ? tasks.length : tasks.filter(x => x.status === t.key).length}
+                  {t.key === 'all' ? visibleTasks.length : visibleTasks.filter(x => x.status === t.key).length}
                 </span>
               </button>
             ))}
@@ -313,7 +293,9 @@ export default function FasonPage() {
                           <option value="done">Tamamlandı</option>
                         </select>
                       </td>
-                      <td style={{ fontWeight: 700, color: '#E85D04' }}>₺{(t.price ?? 0).toLocaleString('tr-TR')}</td>
+                      <td style={{ fontWeight: 700, color: '#E85D04' }}>
+                        {(role !== 'atolye' || t.showPriceToWorkshop) ? `₺${(t.price ?? 0).toLocaleString('tr-TR')}` : '—'}
+                      </td>
                       <td>
                         {t.status === 'done' && (role === 'admin' || role === 'mudur') && (
                           <button
@@ -343,10 +325,12 @@ export default function FasonPage() {
                       </td>
                       <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{fmtDate(t.createdAt)}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => openEdit(t)}><IconEdit size={13} /></button>
-                          <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.1)', color: '#F87171' }} onClick={() => remove(t.id!)}><IconTrash size={13} /></button>
-                        </div>
+                        {(role === 'admin' || role === 'mudur') && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => openEdit(t)}><IconEdit size={13} /></button>
+                            <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.1)', color: '#F87171' }} onClick={() => remove(t.id!)}><IconTrash size={13} /></button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -358,14 +342,30 @@ export default function FasonPage() {
       </div>
 
       {/* Ödeme Yap Modal */}
-      {payOpen && payWorker && (
+      {payOpen && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setPayOpen(false)}>
           <div className="modal-box" style={{ maxWidth: 400 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700 }}>Ödeme Yap — {payWorker.name || payWorker.email}</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>
+                Ödeme Yap{payWorker ? ` — ${payWorker.name || payWorker.email}` : ''}
+              </h3>
               <button onClick={() => setPayOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={20} /></button>
             </div>
-            {(() => {
+            {!payWorker && (
+              <div className="form-group">
+                <label className="form-label">Atölye Çalışanı *</label>
+                <select className="form-input" value="" onChange={e => {
+                  const w = workers.find(x => x.uid === e.target.value);
+                  if (w) setPayWorker(w);
+                }}>
+                  <option value="">Çalışan Seç</option>
+                  {workers.map(w => (
+                    <option key={w.uid} value={w.uid}>{w.name || w.email}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {payWorker && (() => {
               const workerStat = workerStats.find(w => w.uid === payWorker.uid);
               return workerStat && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>

@@ -11,7 +11,7 @@ import {
   IconLayoutDashboard, IconPackage, IconStack2,
   IconReceipt, IconFileText, IconTag, IconUsers,
   IconSettings, IconLogout, IconMenu2,
-  IconChevronLeft, IconClipboardList, IconBuildingFactory2, IconListCheck
+  IconChevronLeft, IconClipboardList, IconBuildingFactory2
 } from '@tabler/icons-react';
 
 const ALL_NAV = [
@@ -20,9 +20,8 @@ const ALL_NAV = [
   { href: '/stock', label: 'Stoklar', icon: IconStack2, group: 'Yönetim', roles: ['admin', 'sales'] },
   { href: '/sales', label: 'Satışlar', icon: IconReceipt, group: 'Yönetim', roles: ['admin', 'sales'] },
   { href: '/offers', label: 'Teklifler', icon: IconFileText, group: 'Yönetim', roles: ['admin', 'sales'] },
-  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, group: 'Yönetim', roles: ['admin', 'mudur'] },
+  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, group: 'Yönetim', roles: ['admin', 'mudur', 'atolye', 'sales'] },
   { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, group: 'Yönetim', roles: ['admin', 'mudur'] },
-  { href: '/my-tasks', label: 'İş Takip', icon: IconListCheck, group: 'Genel', roles: ['atolye'] },
   { href: '/categories', label: 'Kategoriler', icon: IconTag, group: 'Sistem', roles: ['admin'] },
   { href: '/users', label: 'Kullanıcılar', icon: IconUsers, group: 'Sistem', roles: ['admin'] },
   { href: '/settings', label: 'Ayarlar', icon: IconSettings, group: 'Sistem', roles: ['admin'] },

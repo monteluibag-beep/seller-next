@@ -7,7 +7,7 @@ import { auth } from '@/lib/firebase';
 import {
   IconX, IconLayoutDashboard, IconPackage, IconStack2,
   IconReceipt, IconFileText, IconTag, IconUsers,
-  IconSettings, IconLogout, IconClipboardList, IconBuildingFactory2, IconListCheck
+  IconSettings, IconLogout, IconClipboardList, IconBuildingFactory2
 } from '@tabler/icons-react';
 
 const ALL_NAV = [
@@ -16,9 +16,8 @@ const ALL_NAV = [
   { href: '/stock', label: 'Stoklar', icon: IconStack2, roles: ['admin', 'sales'] },
   { href: '/sales', label: 'Satışlar', icon: IconReceipt, roles: ['admin', 'sales'] },
   { href: '/offers', label: 'Teklifler', icon: IconFileText, roles: ['admin', 'sales'] },
-  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, roles: ['admin', 'mudur'] },
+  { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, roles: ['admin', 'mudur', 'atolye', 'sales'] },
   { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, roles: ['admin', 'mudur'] },
-  { href: '/my-tasks', label: 'İş Takip', icon: IconListCheck, roles: ['atolye'] },
   { href: '/categories', label: 'Kategoriler', icon: IconTag, roles: ['admin'] },
   { href: '/users', label: 'Kullanıcılar', icon: IconUsers, roles: ['admin'] },
   { href: '/settings', label: 'Ayarlar', icon: IconSettings, roles: ['admin'] },
