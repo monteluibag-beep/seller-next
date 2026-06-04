@@ -110,6 +110,8 @@ export interface Payment {
   note?: string;
   date: unknown;
   createdBy: string;
+  received?: boolean;
+  receivedAt?: unknown;
 }
 
 export type PermissionKey =
