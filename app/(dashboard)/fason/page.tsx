@@ -187,22 +187,11 @@ export default function FasonPage() {
           <div className="page-title">Fason Takip</div>
           <div className="page-sub">{visibleTasks.length} görev</div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {canPay && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => { setPayWorker(null); setPayOpen(true); }}
-              style={{ background: '#10b981', color: '#fff', borderColor: '#10b981' }}
-            >
-              <IconCoin size={16} /> Ödeme Yap
-            </button>
-          )}
-          {(role === 'admin' || role === 'mudur') && (
-            <button className="btn btn-primary" onClick={openAdd}>
-              <IconPlus size={16} /> Yeni Görev
-            </button>
-          )}
-        </div>
+        {(role === 'admin' || role === 'mudur') && (
+          <button className="btn btn-primary" onClick={openAdd}>
+            <IconPlus size={16} /> Yeni Görev
+          </button>
+        )}
       </div>
 
       <div className="page-content">
