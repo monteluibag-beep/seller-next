@@ -239,6 +239,7 @@ export default function FasonPage() {
                     <th>Kategori</th>
                     <th>Durum</th>
                     <th>Hakediş</th>
+                    <th>Ödeme</th>
                     <th>Tarih</th>
                     <th></th>
                   </tr>
@@ -264,6 +265,28 @@ export default function FasonPage() {
                         </select>
                       </td>
                       <td style={{ fontWeight: 700, color: '#E85D04' }}>₺{(t.price ?? 0).toLocaleString('tr-TR')}</td>
+                      <td>
+                        {t.status === 'done' && (
+                          <button
+                            onClick={async () => {
+                              await import('firebase/firestore').then(async ({ updateDoc, doc: fDoc, serverTimestamp }) => {
+                                await updateDoc(fDoc(db, 'tasks', t.id!), {
+                                  paid: !t.paid,
+                                  paidAt: !t.paid ? serverTimestamp() : null,
+                                });
+                              });
+                              loadAll();
+                            }}
+                            style={{
+                              fontSize: 11, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600,
+                              background: t.paid ? '#d1fae5' : '#fee2e2',
+                              color: t.paid ? '#065f46' : '#991b1b',
+                            }}
+                          >
+                            {t.paid ? '✓ Ödendi' : 'Bekliyor'}
+                          </button>
+                        )}
+                      </td>
                       <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{fmtDate(t.createdAt)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>

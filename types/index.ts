@@ -95,6 +95,8 @@ export interface Task {
   startedAt: unknown;
   completedAt: unknown;
   note: string;
+  paid?: boolean;
+  paidAt?: unknown;
 }
 
 export type PermissionKey =

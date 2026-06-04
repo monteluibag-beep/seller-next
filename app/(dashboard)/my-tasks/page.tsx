@@ -1,60 +1,37 @@
 'use client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
-import {
-  collection, getDocs, updateDoc,
-  doc, serverTimestamp, query, where, orderBy
-} from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Task } from '@/types';
-import { IconClipboardList } from '@tabler/icons-react';
+import {
+  IconClipboardList, IconPlayerPlay, IconCheck,
+  IconClock, IconCircleCheck, IconCoin, IconAlertCircle,
+} from '@tabler/icons-react';
 
-function formatTRY(n: number): string {
+function formatTRY(n: number) {
   return `₺${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
-
-function getTimestamp(ts: unknown): Date | null {
-  if (!ts) return null;
-  const t = ts as { toDate?: () => Date };
-  if (t.toDate) return t.toDate();
-  return new Date(ts as string);
-}
-
-function formatDate(ts: unknown): string {
-  const d = getTimestamp(ts);
-  if (!d) return '—';
+function fmtDate(ts: unknown): string {
+  if (!ts) return '—';
+  const d = (ts as { toDate?: () => Date }).toDate?.() ?? new Date(ts as string);
   return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  todo: 'badge badge-amber',
-  in_progress: 'badge badge-blue',
-  done: 'badge badge-green',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  todo: 'Yapılacak',
-  in_progress: 'Devam Ediyor',
-  done: 'Tamamlandı',
-};
+type Tab = 'active' | 'done' | 'payment';
 
 export default function MyTasksPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'active' | 'done'>('active');
+  const [tab, setTab] = useState<Tab>('active');
   const [updating, setUpdating] = useState<string | null>(null);
 
-  const loadTasks = async () => {
+  const load = async () => {
     if (!user?.uid) return;
     setLoading(true);
     try {
-      const snap = await getDocs(
-        query(
-          collection(db, 'tasks'),
-          where('assignedTo', '==', user.uid)
-        )
-      );
+      const snap = await getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', user.uid)));
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Task));
       all.sort((a, b) => {
         const ta = (a.createdAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
@@ -62,203 +39,331 @@ export default function MyTasksPage() {
         return tb - ta;
       });
       setTasks(all);
-    } catch (err) {
-      console.error('My tasks load error:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    if (user?.uid) loadTasks();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  useEffect(() => { if (user?.uid) load(); }, [user?.uid]);
 
   const handleStart = async (t: Task) => {
     if (!t.id) return;
     setUpdating(t.id);
-    try {
-      await updateDoc(doc(db, 'tasks', t.id), {
-        status: 'in_progress',
-        startedAt: serverTimestamp(),
-      });
-      await loadTasks();
-    } finally {
-      setUpdating(null);
-    }
+    await updateDoc(doc(db, 'tasks', t.id), { status: 'in_progress', startedAt: serverTimestamp() });
+    await load();
+    setUpdating(null);
   };
 
-  const handleComplete = async (t: Task) => {
+  const handleDone = async (t: Task) => {
     if (!t.id) return;
     setUpdating(t.id);
-    try {
-      await updateDoc(doc(db, 'tasks', t.id), {
-        status: 'done',
-        completedAt: serverTimestamp(),
-      });
-      await loadTasks();
-    } finally {
-      setUpdating(null);
-    }
+    await updateDoc(doc(db, 'tasks', t.id), { status: 'done', completedAt: serverTimestamp() });
+    await load();
+    setUpdating(null);
   };
 
-  const activeTasks = tasks.filter(t => t.status === 'todo' || t.status === 'in_progress');
-  const doneTasks = tasks.filter(t => t.status === 'done');
-  const totalEarning = doneTasks
-    .filter(t => t.showPriceToWorkshop)
-    .reduce((s, t) => s + (t.price || 0), 0);
+  const active = tasks.filter(t => t.status !== 'done');
+  const done   = tasks.filter(t => t.status === 'done');
+  const paid   = done.filter(t => t.paid);
+  const unpaid = done.filter(t => !t.paid);
 
-  const renderTaskCard = (t: Task, readonly = false) => (
-    <div
-      key={t.id}
-      style={{
-        background: 'var(--surface2)',
-        borderRadius: 12,
-        padding: '18px 20px',
-        border: '1px solid var(--border)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', lineHeight: 1.3 }}>{t.title}</div>
-        <span className={STATUS_BADGE[t.status]}>{STATUS_LABELS[t.status]}</span>
-      </div>
+  const totalHakedis  = done.filter(t => t.showPriceToWorkshop).reduce((s, t) => s + (t.price || 0), 0);
+  const paidAmount    = paid.filter(t => t.showPriceToWorkshop).reduce((s, t) => s + (t.price || 0), 0);
+  const unpaidAmount  = unpaid.filter(t => t.showPriceToWorkshop).reduce((s, t) => s + (t.price || 0), 0);
 
-      {t.description && (
-        <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>{t.description}</div>
-      )}
+  const stats = [
+    { label: 'Aktif İş', value: active.length, color: '#f59e0b', icon: IconClock },
+    { label: 'Tamamlanan', value: done.length, color: '#10b981', icon: IconCircleCheck },
+    { label: 'Toplam Hakediş', value: formatTRY(totalHakedis), color: 'var(--primary)', icon: IconCoin, big: true },
+    { label: 'Ödeme Bekliyor', value: formatTRY(unpaidAmount), color: '#ef4444', icon: IconAlertCircle, big: true },
+  ];
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        {t.category && (
-          <span className="badge" style={{ background: 'var(--surface3)', color: 'var(--text-2)' }}>
-            {t.category}
-          </span>
-        )}
-        {t.showPriceToWorkshop && (
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--or)' }}>
-            {formatTRY(t.price || 0)}
-          </span>
-        )}
-      </div>
-
-      {readonly ? (
-        <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          {!!t.completedAt && <span>Tamamlandı: {formatDate(t.completedAt)}</span>}
-          {!!t.createdAt && <span>Oluşturuldu: {formatDate(t.createdAt)}</span>}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            Oluşturuldu: {formatDate(t.createdAt)}
-          </span>
-          {t.status === 'todo' && (
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={updating === t.id}
-              onClick={() => handleStart(t)}
-            >
-              {updating === t.id ? 'Güncelleniyor...' : 'Başladım'}
-            </button>
-          )}
-          {t.status === 'in_progress' && (
-            <button
-              className="btn btn-sm"
-              disabled={updating === t.id}
-              onClick={() => handleComplete(t)}
-              style={{ background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer' }}
-            >
-              {updating === t.id ? 'Güncelleniyor...' : 'Tamamladım'}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  const TABS: { key: Tab; label: string; count: number }[] = [
+    { key: 'active',   label: 'Aktif İşler',      count: active.length },
+    { key: 'done',     label: 'Tamamlanan İşler',  count: done.length },
+    { key: 'payment',  label: 'Ödemeler',          count: unpaid.length },
+  ];
 
   return (
     <>
       <div className="topbar">
         <div>
           <div className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <IconClipboardList size={22} style={{ color: 'var(--or)' }} />
-            İşlerim
+            <IconClipboardList size={22} style={{ color: 'var(--primary)' }} />
+            İş Takip
           </div>
-          <div className="page-sub">Bana atanan görevler</div>
+          <div className="page-sub">{user?.displayName || user?.email?.split('@')[0]}</div>
         </div>
       </div>
 
       <div className="page-content">
+        {/* Stat Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
+          {stats.map(s => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} style={{
+                background: 'var(--card)', border: '1px solid var(--border)',
+                borderRadius: 12, padding: '16px 18px',
+                display: 'flex', alignItems: 'center', gap: 14,
+              }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+                  background: s.color + '20',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={22} style={{ color: s.color }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: s.big ? 16 : 22, fontWeight: 800, color: s.color, lineHeight: 1.1 }}>
+                    {s.value}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: tab === t.key ? 700 : 400,
+              color: tab === t.key ? 'var(--primary)' : 'var(--text-3)',
+              borderBottom: tab === t.key ? '2px solid var(--primary)' : '2px solid transparent',
+              marginBottom: -1, display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              {t.label}
+              {t.count > 0 && (
+                <span style={{
+                  fontSize: 11, background: tab === t.key ? 'var(--primary)' : 'var(--border)',
+                  color: tab === t.key ? '#fff' : 'var(--text-3)',
+                  borderRadius: 10, padding: '1px 7px',
+                }}>{t.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>Yükleniyor...</div>
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>Yükleniyor…</div>
         ) : (
           <>
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
-              {([['active', 'Yapılacak İşler', activeTasks.length], ['done', 'Tamamlanan İşler', doneTasks.length]] as const).map(([key, label, count]) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveTab(key)}
-                  style={{
-                    padding: '8px 16px',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: activeTab === key ? 700 : 400,
-                    color: activeTab === key ? 'var(--or)' : 'var(--text-3)',
-                    borderBottom: activeTab === key ? '2px solid var(--or)' : '2px solid transparent',
-                    marginBottom: -1,
-                  }}
-                >
-                  {label}
-                  <span style={{
-                    marginLeft: 6, fontSize: 11,
-                    background: 'var(--surface3)', borderRadius: 10, padding: '1px 7px'
-                  }}>{count}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Active tab */}
-            {activeTab === 'active' && (
+            {/* AKTİF İŞLER */}
+            {tab === 'active' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {activeTasks.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)', fontSize: 14 }}>
-                    Aktif göreviniz bulunmuyor
+                {active.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
+                    Aktif iş bulunmuyor 🎉
                   </div>
-                ) : activeTasks.map(t => renderTaskCard(t, false))}
+                ) : active.map(t => (
+                  <div key={t.id} style={{
+                    background: 'var(--card)', border: '1px solid var(--border)',
+                    borderRadius: 12, padding: '16px 18px',
+                    borderLeft: `4px solid ${t.status === 'in_progress' ? '#3b82f6' : '#f59e0b'}`,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>{t.title}</div>
+                      <span className={`badge ${t.status === 'in_progress' ? 'badge-blue' : 'badge-amber'}`}>
+                        {t.status === 'in_progress' ? 'Devam Ediyor' : 'Yapılacak'}
+                      </span>
+                    </div>
+                    {t.description && (
+                      <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 10 }}>{t.description}</div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {t.category && (
+                          <span style={{
+                            fontSize: 11, padding: '2px 8px', borderRadius: 5,
+                            background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-3)',
+                          }}>{t.category}</span>
+                        )}
+                        {t.showPriceToWorkshop && t.price > 0 && (
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
+                            {formatTRY(t.price)}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                          {fmtDate(t.createdAt)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {t.status === 'todo' && (
+                          <button
+                            className="btn btn-primary"
+                            style={{ fontSize: 12, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 5 }}
+                            disabled={updating === t.id}
+                            onClick={() => handleStart(t)}
+                          >
+                            <IconPlayerPlay size={13} />
+                            {updating === t.id ? '…' : 'Başladım'}
+                          </button>
+                        )}
+                        {t.status === 'in_progress' && (
+                          <button
+                            style={{
+                              fontSize: 12, padding: '6px 14px', border: 'none', borderRadius: 7,
+                              background: '#10b981', color: '#fff', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600,
+                            }}
+                            disabled={updating === t.id}
+                            onClick={() => handleDone(t)}
+                          >
+                            <IconCheck size={13} />
+                            {updating === t.id ? '…' : 'Tamamladım'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Done tab */}
-            {activeTab === 'done' && (
-              <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {doneTasks.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)', fontSize: 14 }}>
-                      Tamamlanan göreviniz bulunmuyor
-                    </div>
-                  ) : doneTasks.map(t => renderTaskCard(t, true))}
-                </div>
-
-                {doneTasks.some(t => t.showPriceToWorkshop) && (
-                  <div style={{
-                    marginTop: 24,
-                    padding: '16px 20px',
-                    background: 'var(--surface2)',
-                    borderRadius: 10,
-                    border: '1px solid var(--border)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+            {/* TAMAMLANAN İŞLER */}
+            {tab === 'done' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {done.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>Henüz tamamlanan iş yok</div>
+                ) : done.map(t => (
+                  <div key={t.id} style={{
+                    background: 'var(--card)', border: '1px solid var(--border)',
+                    borderRadius: 12, padding: '16px 18px',
+                    borderLeft: '4px solid #10b981',
+                    opacity: 0.9,
                   }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>Toplam Hakediş</span>
-                    <span style={{ fontWeight: 700, fontSize: 18, color: 'var(--or)' }}>{formatTRY(totalEarning)}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>{t.title}</div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                        {t.showPriceToWorkshop && t.price > 0 && (
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>{formatTRY(t.price)}</span>
+                        )}
+                        <span className={`badge ${t.paid ? 'badge-green' : 'badge-red'}`}>
+                          {t.paid ? 'Ödendi' : 'Ödeme Bekliyor'}
+                        </span>
+                      </div>
+                    </div>
+                    {t.description && (
+                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 6 }}>{t.description}</div>
+                    )}
+                    <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-3)', flexWrap: 'wrap' }}>
+                      {t.category && <span>📁 {t.category}</span>}
+                      {!!t.completedAt && <span>✅ Tamamlandı: {fmtDate(t.completedAt)}</span>}
+                      {t.paid && !!t.paidAt && <span>💰 Ödendi: {fmtDate(t.paidAt)}</span>}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Hakediş özet */}
+                {done.some(t => t.showPriceToWorkshop) && (
+                  <div style={{
+                    marginTop: 8, background: 'var(--card)', border: '1px solid var(--border)',
+                    borderRadius: 12, padding: '14px 18px',
+                    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12,
+                  }}>
+                    {[
+                      { label: 'Toplam Hakediş', value: formatTRY(totalHakedis), color: 'var(--primary)' },
+                      { label: 'Ödenen', value: formatTRY(paidAmount), color: '#10b981' },
+                      { label: 'Bekleyen', value: formatTRY(unpaidAmount), color: '#ef4444' },
+                    ].map(s => (
+                      <div key={s.label} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
+                      </div>
+                    ))}
                   </div>
                 )}
-              </>
+              </div>
+            )}
+
+            {/* ÖDEMELER */}
+            {tab === 'payment' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Özet */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8,
+                }}>
+                  <div style={{
+                    background: '#10b981' + '15', border: '1px solid #10b981' + '40',
+                    borderRadius: 12, padding: '14px 18px', textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981' }}>{formatTRY(paidAmount)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>✅ Tahsil Edilen</div>
+                  </div>
+                  <div style={{
+                    background: '#ef4444' + '15', border: '1px solid #ef4444' + '40',
+                    borderRadius: 12, padding: '14px 18px', textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#ef4444' }}>{formatTRY(unpaidAmount)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>⏳ Bekleyen Tahsilat</div>
+                  </div>
+                </div>
+
+                {/* Ödeme Bekleyenler */}
+                {unpaid.filter(t => t.showPriceToWorkshop && t.price > 0).length > 0 && (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', marginTop: 4, marginBottom: 4 }}>
+                      ÖDEME BEKLİYOR
+                    </div>
+                    {unpaid.filter(t => t.showPriceToWorkshop && t.price > 0).map(t => (
+                      <div key={t.id} style={{
+                        background: 'var(--card)', border: '1px solid #ef4444' + '50',
+                        borderRadius: 12, padding: '14px 18px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)', marginBottom: 3 }}>{t.title}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                            Tamamlandı: {fmtDate(t.completedAt)}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#ef4444', flexShrink: 0 }}>
+                          {formatTRY(t.price)}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Ödenenler */}
+                {paid.filter(t => t.showPriceToWorkshop && t.price > 0).length > 0 && (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', marginTop: 12, marginBottom: 4 }}>
+                      ÖDENDİ
+                    </div>
+                    {paid.filter(t => t.showPriceToWorkshop && t.price > 0).map(t => (
+                      <div key={t.id} style={{
+                        background: 'var(--card)', border: '1px solid #10b981' + '40',
+                        borderRadius: 12, padding: '14px 18px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                        opacity: 0.8,
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)', marginBottom: 3 }}>{t.title}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                            {!!t.paidAt ? `Ödendi: ${fmtDate(t.paidAt)}` : `Tamamlandı: ${fmtDate(t.completedAt)}`}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: '#10b981' }}>
+                            {formatTRY(t.price)}
+                          </div>
+                          <span className="badge badge-green">Ödendi</span>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {unpaid.filter(t => t.showPriceToWorkshop && t.price > 0).length === 0 &&
+                  paid.filter(t => t.showPriceToWorkshop && t.price > 0).length === 0 && (
+                  <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
+                    Hakediş kaydı bulunmuyor
+                  </div>
+                )}
+              </div>
             )}
           </>
         )}

@@ -1,18 +1,24 @@
 'use client';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Sidebar from '@/components/Sidebar';
 import MobTopbar from '@/components/MobTopbar';
 import BottomNav from '@/components/BottomNav';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) router.push('/login');
-  }, [user, loading, router]);
+    if (loading) return;
+    if (!user) { router.push('/login'); return; }
+    // Atölye kullanıcısı ana ekranda ise my-tasks'e yönlendir
+    if (role === 'atolye' && pathname === '/') {
+      router.replace('/my-tasks');
+    }
+  }, [user, role, loading, pathname, router]);
 
   if (loading) return (
     <div className="loading-screen">
