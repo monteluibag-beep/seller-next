@@ -169,7 +169,7 @@ export default function SalesPage() {
 <html lang="tr">
 <head>
 <meta charset="UTF-8"/>
-<title>Satış Fişi - ${saleNo}</title>
+<title>Satış Özeti - ${saleNo}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; font-size: 13px; color: #222; background: #fff; }
@@ -369,17 +369,17 @@ export default function SalesPage() {
                 />
               </div>
               {productSearch && filteredProducts.length > 0 && (
-                <div style={{ border: '1px solid #e0e0e0', borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: 'auto', background: 'var(--card)' }}>
                   {filteredProducts.map(p => (
                     <div
                       key={p.id}
                       onClick={() => addToCart(p)}
-                      style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0', fontSize: 13 }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#f8f8f8')}
-                      onMouseLeave={e => (e.currentTarget.style.background = '')}
+                      style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', fontSize: 13, color: 'var(--text-1)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <span>{p.name} <code style={{ fontSize: 11, background: '#f0f0f0', padding: '1px 5px', borderRadius: 3 }}>{p.code}</code></span>
-                      <span style={{ color: '#888' }}>₺{p.list.toLocaleString('tr-TR')} | Stok: {p.stock}</span>
+                      <span>{p.name} <code style={{ fontSize: 11, background: 'var(--bg)', padding: '1px 5px', borderRadius: 3, color: 'var(--text-3)' }}>{p.code}</code></span>
+                      <span style={{ color: 'var(--text-3)', flexShrink: 0, marginLeft: 8 }}>₺{p.list.toLocaleString('tr-TR')} | Stok: {p.stock}</span>
                     </div>
                   ))}
                 </div>
