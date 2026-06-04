@@ -82,10 +82,13 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav style={{ flex: 1, paddingTop: 8 }}>
-        {groups.map(group => (
+        {groups.map(group => {
+          const groupItems = navItems.filter(i => i.group === group);
+          if (groupItems.length === 0) return null;
+          return (
           <div key={group}>
             {!collapsed && <div className="nav-label">{group}</div>}
-            {navItems.filter(i => i.group === group).map(item => {
+            {groupItems.map(item => {
               const Icon = item.icon;
               const active = pathname === item.href;
               return (
@@ -96,7 +99,8 @@ export default function Sidebar() {
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Rates + User */}

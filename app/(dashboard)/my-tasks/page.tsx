@@ -1,9 +1,9 @@
 'use client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, serverTimestamp, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Task } from '@/types';
+import type { Task, Payment } from '@/types';
 import {
   IconClipboardList, IconPlayerPlay, IconCheck,
   IconClock, IconCircleCheck, IconCoin, IconAlertCircle,
@@ -23,6 +23,7 @@ type Tab = 'active' | 'done' | 'payment';
 export default function MyTasksPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('active');
   const [updating, setUpdating] = useState<string | null>(null);
@@ -31,14 +32,18 @@ export default function MyTasksPage() {
     if (!user?.uid) return;
     setLoading(true);
     try {
-      const snap = await getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', user.uid)));
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Task));
+      const [taskSnap, paySnap] = await Promise.all([
+        getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', user.uid))),
+        getDocs(query(collection(db, 'payments'), where('workerId', '==', user.uid), orderBy('date', 'desc'))),
+      ]);
+      const all = taskSnap.docs.map(d => ({ id: d.id, ...d.data() } as Task));
       all.sort((a, b) => {
         const ta = (a.createdAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
         const tb = (b.createdAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
         return tb - ta;
       });
       setTasks(all);
+      setPayments(paySnap.docs.map(d => ({ id: d.id, ...d.data() } as Payment)));
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -67,20 +72,22 @@ export default function MyTasksPage() {
   const unpaid = done.filter(t => !t.paid);
 
   const totalHakedis  = done.filter(t => t.showPriceToWorkshop).reduce((s, t) => s + (t.price || 0), 0);
-  const paidAmount    = paid.filter(t => t.showPriceToWorkshop).reduce((s, t) => s + (t.price || 0), 0);
-  const unpaidAmount  = unpaid.filter(t => t.showPriceToWorkshop).reduce((s, t) => s + (t.price || 0), 0);
+  const totalOdenen   = payments.reduce((s, p) => s + p.amount, 0);
+  const kalanBakiye   = totalHakedis - totalOdenen;
+  const paidAmount    = totalOdenen;
+  const unpaidAmount  = kalanBakiye;
 
   const stats = [
     { label: 'Aktif İş', value: active.length, color: '#f59e0b', icon: IconClock },
     { label: 'Tamamlanan', value: done.length, color: '#10b981', icon: IconCircleCheck },
     { label: 'Toplam Hakediş', value: formatTRY(totalHakedis), color: 'var(--primary)', icon: IconCoin, big: true },
-    { label: 'Ödeme Bekliyor', value: formatTRY(unpaidAmount), color: '#ef4444', icon: IconAlertCircle, big: true },
+    { label: 'Kalan Bakiye', value: formatTRY(kalanBakiye < 0 ? 0 : kalanBakiye), color: kalanBakiye > 0 ? '#f59e0b' : '#6b7280', icon: IconAlertCircle, big: true },
   ];
 
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: 'active',   label: 'Aktif İşler',      count: active.length },
     { key: 'done',     label: 'Tamamlanan İşler',  count: done.length },
-    { key: 'payment',  label: 'Ödemeler',          count: unpaid.length },
+    { key: 'payment',  label: 'Ödemeler',          count: payments.length },
   ];
 
   return (
@@ -188,6 +195,11 @@ export default function MyTasksPage() {
                         <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                           {fmtDate(t.createdAt)}
                         </span>
+                        {t.dueDate && (
+                          <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>
+                            ⏰ Son: {new Date(t.dueDate).toLocaleDateString('tr-TR')}
+                          </span>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         {t.status === 'todo' && (
@@ -198,7 +210,7 @@ export default function MyTasksPage() {
                             onClick={() => handleStart(t)}
                           >
                             <IconPlayerPlay size={13} />
-                            {updating === t.id ? '…' : 'Başladım'}
+                            {updating === t.id ? '…' : 'Başla'}
                           </button>
                         )}
                         {t.status === 'in_progress' && (
@@ -212,7 +224,7 @@ export default function MyTasksPage() {
                             onClick={() => handleDone(t)}
                           >
                             <IconCheck size={13} />
-                            {updating === t.id ? '…' : 'Tamamladım'}
+                            {updating === t.id ? '…' : 'Tamamla'}
                           </button>
                         )}
                       </div>
@@ -281,87 +293,52 @@ export default function MyTasksPage() {
             {/* ÖDEMELER */}
             {tab === 'payment' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Özet */}
-                <div style={{
-                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8,
-                }}>
-                  <div style={{
-                    background: '#10b981' + '15', border: '1px solid #10b981' + '40',
-                    borderRadius: 12, padding: '14px 18px', textAlign: 'center',
-                  }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981' }}>{formatTRY(paidAmount)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>✅ Tahsil Edilen</div>
-                  </div>
-                  <div style={{
-                    background: '#ef4444' + '15', border: '1px solid #ef4444' + '40',
-                    borderRadius: 12, padding: '14px 18px', textAlign: 'center',
-                  }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#ef4444' }}>{formatTRY(unpaidAmount)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>⏳ Bekleyen Tahsilat</div>
-                  </div>
+                {/* Bakiye özet */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 8 }}>
+                  {[
+                    { label: 'Toplam Hakediş', value: formatTRY(totalHakedis), color: 'var(--primary)', bg: 'var(--primary)' },
+                    { label: 'Tahsil Edilen', value: formatTRY(totalOdenen), color: '#10b981', bg: '#10b981' },
+                    { label: 'Kalan Bakiye', value: formatTRY(kalanBakiye < 0 ? 0 : kalanBakiye), color: kalanBakiye > 0 ? '#f59e0b' : '#6b7280', bg: kalanBakiye > 0 ? '#f59e0b' : '#6b7280' },
+                  ].map(s => (
+                    <div key={s.label} style={{
+                      background: s.bg + '15', border: `1px solid ${s.bg}40`,
+                      borderRadius: 12, padding: '14px 10px', textAlign: 'center',
+                    }}>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>{s.label}</div>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Ödeme Bekleyenler */}
-                {unpaid.filter(t => t.showPriceToWorkshop && t.price > 0).length > 0 && (
-                  <>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', marginTop: 4, marginBottom: 4 }}>
-                      ÖDEME BEKLİYOR
-                    </div>
-                    {unpaid.filter(t => t.showPriceToWorkshop && t.price > 0).map(t => (
-                      <div key={t.id} style={{
-                        background: 'var(--card)', border: '1px solid #ef4444' + '50',
-                        borderRadius: 12, padding: '14px 18px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                      }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)', marginBottom: 3 }}>{t.title}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                            Tamamlandı: {fmtDate(t.completedAt)}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: '#ef4444', flexShrink: 0 }}>
-                          {formatTRY(t.price)}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Ödenenler */}
-                {paid.filter(t => t.showPriceToWorkshop && t.price > 0).length > 0 && (
-                  <>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', marginTop: 12, marginBottom: 4 }}>
-                      ÖDENDİ
-                    </div>
-                    {paid.filter(t => t.showPriceToWorkshop && t.price > 0).map(t => (
-                      <div key={t.id} style={{
-                        background: 'var(--card)', border: '1px solid #10b981' + '40',
-                        borderRadius: 12, padding: '14px 18px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                        opacity: 0.8,
-                      }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)', marginBottom: 3 }}>{t.title}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                            {!!t.paidAt ? `Ödendi: ${fmtDate(t.paidAt)}` : `Tamamlandı: ${fmtDate(t.completedAt)}`}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: '#10b981' }}>
-                            {formatTRY(t.price)}
-                          </div>
-                          <span className="badge badge-green">Ödendi</span>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {unpaid.filter(t => t.showPriceToWorkshop && t.price > 0).length === 0 &&
-                  paid.filter(t => t.showPriceToWorkshop && t.price > 0).length === 0 && (
-                  <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
-                    Hakediş kaydı bulunmuyor
+                {/* Ödeme geçmişi */}
+                {payments.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>
+                    Henüz ödeme kaydı bulunmuyor
                   </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', marginBottom: 4 }}>ÖDEME GEÇMİŞİ</div>
+                    {payments.map(p => (
+                      <div key={p.id} style={{
+                        background: 'var(--card)', border: '1px solid #10b98140',
+                        borderRadius: 12, padding: '14px 18px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                            <span style={{ fontSize: 20 }}>💰</span>
+                            <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)' }}>Ödeme Alındı</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                            {fmtDate(p.date)}{p.note ? ` · ${p.note}` : ''}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: '#10b981', flexShrink: 0 }}>
+                          +{formatTRY(p.amount)}
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
             )}

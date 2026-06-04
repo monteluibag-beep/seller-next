@@ -96,9 +96,20 @@ export interface Task {
   createdAt: unknown;
   startedAt: unknown;
   completedAt: unknown;
+  dueDate?: string;
   note: string;
   paid?: boolean;
   paidAt?: unknown;
+}
+
+export interface Payment {
+  id?: string;
+  workerId: string;
+  workerName: string;
+  amount: number;
+  note?: string;
+  date: unknown;
+  createdBy: string;
 }
 
 export type PermissionKey =
