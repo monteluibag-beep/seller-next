@@ -4,20 +4,24 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   IconLayoutDashboard, IconPackage,
-  IconFileText, IconReceipt, IconDots
+  IconFileText, IconReceipt, IconDots, IconClipboardList
 } from '@tabler/icons-react';
 import Drawer from './Drawer';
+import { useAuth } from '@/hooks/useAuth';
 
-const items = [
-  { href: '/', label: 'Ana', icon: IconLayoutDashboard },
-  { href: '/products', label: 'Ürünler', icon: IconPackage },
-  { href: '/offers', label: 'Teklifler', icon: IconFileText },
-  { href: '/sales', label: 'Satışlar', icon: IconReceipt },
+const ALL_ITEMS = [
+  { href: '/', label: 'Ana', icon: IconLayoutDashboard, roles: ['admin', 'sales', 'mudur'] },
+  { href: '/products', label: 'Ürünler', icon: IconPackage, roles: ['admin', 'sales'] },
+  { href: '/offers', label: 'Teklifler', icon: IconFileText, roles: ['admin', 'sales'] },
+  { href: '/sales', label: 'Satışlar', icon: IconReceipt, roles: ['admin', 'sales'] },
+  { href: '/fason', label: 'Fason', icon: IconClipboardList, roles: ['atolye'] },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { role } = useAuth();
+  const items = ALL_ITEMS.filter(i => !role || i.roles.includes(role));
 
   return (
     <>

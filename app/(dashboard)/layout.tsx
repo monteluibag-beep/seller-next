@@ -1,19 +1,24 @@
 'use client';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Sidebar from '@/components/Sidebar';
 import MobTopbar from '@/components/MobTopbar';
 import BottomNav from '@/components/BottomNav';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (loading) return;
     if (!user) { router.push('/login'); return; }
-  }, [user, loading, router]);
+    // Atolye kullanıcısı sadece /fason ve /atolye* görebilir
+    if (role === 'atolye' && pathname === '/') {
+      router.replace('/fason');
+    }
+  }, [user, role, loading, router, pathname]);
 
   if (loading) return (
     <div className="loading-screen">
