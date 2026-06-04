@@ -73,13 +73,13 @@ export default function FasonPage() {
     hakEdis: visibleTasks.filter(t => t.status === 'done').reduce((s, t) => s + (t.price ?? 0), 0),
   };
 
-  // Her çalışan için bakiye: sadece received===true ödemeler düşer
+  // Bakiye: TÜM ödemeler anında düşer. received=true = sadece mutabakat onayı
   function getWorkerBalance(workerUid: string) {
     const hakedis = tasks.filter(t => t.assignedTo === workerUid && t.status === 'done').reduce((s, t) => s + (t.price ?? 0), 0);
     const workerPayments = payments.filter(p => p.workerId === workerUid);
-    const odenen = workerPayments.filter(p => p.received).reduce((s, p) => s + p.amount, 0);
-    const bekleyen = workerPayments.filter(p => !p.received).reduce((s, p) => s + p.amount, 0);
-    return { hakedis, odenen, bekleyen, kalan: hakedis - odenen, workerPayments };
+    const odenen = workerPayments.reduce((s, p) => s + p.amount, 0);
+    const mutabakatsiz = workerPayments.filter(p => !p.received).length;
+    return { hakedis, odenen, mutabakatsiz, kalan: hakedis - odenen, workerPayments };
   }
 
   // Ödemeyi "Alındı" olarak işaretle
@@ -217,7 +217,7 @@ export default function FasonPage() {
               const isChanging = changingStatus === t.id;
               const showPrice = role !== 'atolye' || t.showPriceToWorkshop;
               const workerBalance = getWorkerBalance(t.assignedTo);
-              const pendingCount = workerBalance.workerPayments.filter(p => !p.received).length;
+              const pendingCount = workerBalance.mutabakatsiz;
 
               return (
                 <div key={t.id} style={{
@@ -381,10 +381,10 @@ export default function FasonPage() {
               ))}
             </div>
 
-            {/* Bekleyen ödeme varsa uyarı */}
-            {histBalance.bekleyen > 0 && (
+            {/* Mutabakatsız ödeme uyarısı */}
+            {histBalance.mutabakatsiz > 0 && (
               <div style={{ background: 'rgba(245,158,11,.1)', border: '1px solid rgba(245,158,11,.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>
-                ⚠️ ₺{histBalance.bekleyen.toLocaleString('tr-TR')} tutarında onay bekleyen ödeme var. Alındı onayı verildiğinde bakiyeden düşer.
+                ⚠️ {histBalance.mutabakatsiz} ödeme için mutabakat onayı bekleniyor. Bakiye zaten güncellendi.
               </div>
             )}
 
@@ -414,13 +414,19 @@ export default function FasonPage() {
                           {p.received ? '✓ Alındı' : 'Onay Bekliyor'}
                         </span>
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                        {fmtDate(p.date)} · Kaydeden: {p.createdBy}
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>
+                        📅 Ödeme Tarihi: <strong style={{ color: 'var(--text-2)' }}>{fmtDate(p.date)}</strong>
                       </div>
-                      {p.note && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{p.note}</div>}
+                      {!!(p.received && p.receivedAt) && (
+                        <div style={{ fontSize: 11, color: '#10b981', marginTop: 2 }}>
+                          ✓ Mutabakat: {fmtDate(p.receivedAt)}
+                        </div>
+                      )}
+                      {p.note && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>Not: {p.note}</div>}
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>Kaydeden: {p.createdBy}</div>
                     </div>
 
-                    {/* Alındı Butonu — sadece received=false ise göster */}
+                    {/* Mutabakat butonu — bakiyeyi değil, onay durumunu günceller */}
                     {!p.received && (
                       <button
                         disabled={confirmingId === p.id}

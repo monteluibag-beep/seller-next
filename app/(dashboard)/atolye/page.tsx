@@ -89,7 +89,7 @@ export default function AtölyelerPage() {
         .filter(t => t.assignedTo === w.uid && t.status === 'done')
         .reduce((s, t) => s + (t.price ?? 0), 0);
       const workerPayments = payments.filter(p => p.workerId === w.uid);
-      const odenen = workerPayments.filter(p => p.received).reduce((s, p) => s + p.amount, 0);
+      const odenen = workerPayments.reduce((s, p) => s + p.amount, 0);
       return {
         worker: w,
         todo: allTasks.filter(t => t.assignedTo === w.uid && t.status === 'todo').length,
