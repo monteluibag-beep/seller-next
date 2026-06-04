@@ -8,21 +8,15 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import type { Task, AppUser, Payment } from '@/types';
 import {
-  IconPlus, IconX, IconTrash, IconEdit, IconCheck,
-  IconClock, IconPlayerPlay, IconCoin,
+  IconPlus, IconX, IconTrash, IconEdit,
 } from '@tabler/icons-react';
 
 type TabKey = 'all' | 'todo' | 'in_progress' | 'done';
 
-const STATUS_LABEL: Record<Task['status'], string> = {
-  todo: 'Yapılacak',
-  in_progress: 'Devam Ediyor',
-  done: 'Tamamlandı',
-};
-const STATUS_BADGE: Record<Task['status'], string> = {
-  todo: 'badge-amber',
-  in_progress: 'badge-blue',
-  done: 'badge-green',
+const STATUS_CONFIG = {
+  todo:        { label: 'Yapılacak',    color: '#f59e0b', bg: 'rgba(245,158,11,.15)',  dot: '#f59e0b' },
+  in_progress: { label: 'Devam Ediyor', color: '#3b82f6', bg: 'rgba(59,130,246,.15)',  dot: '#3b82f6' },
+  done:        { label: 'Tamamlandı',   color: '#10b981', bg: 'rgba(16,185,129,.15)', dot: '#10b981' },
 };
 
 const emptyForm = {
@@ -31,9 +25,9 @@ const emptyForm = {
 };
 
 function fmtDate(ts: unknown): string {
-  if (!ts) return '—';
+  if (!ts) return '';
   const d = (ts as { toDate?: () => Date }).toDate?.() ?? new Date(ts as string);
-  return d.toLocaleDateString('tr-TR');
+  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 export default function FasonPage() {
@@ -47,12 +41,9 @@ export default function FasonPage() {
   const [editing, setEditing] = useState<Task | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [payOpen, setPayOpen] = useState(false);
-  const [payWorker, setPayWorker] = useState<AppUser | null>(null);
-  const [payAmount, setPayAmount] = useState('');
-  const [payNote, setPayNote] = useState('');
-  const [paySaving, setPaySaving] = useState(false);
-  const canPay = role === 'admin' || role === 'mudur';
+  const [changingStatus, setChangingStatus] = useState<string | null>(null);
+
+  const isAdmin = role === 'admin' || role === 'mudur';
 
   useEffect(() => { loadAll(); }, []);
 
@@ -69,26 +60,6 @@ export default function FasonPage() {
     setLoading(false);
   }
 
-  async function savePayment() {
-    if (!payWorker || !payAmount || parseFloat(payAmount) <= 0) return;
-    setPaySaving(true);
-    await addDoc(collection(db, 'payments'), {
-      workerId: payWorker.uid,
-      workerName: payWorker.name || payWorker.email,
-      amount: parseFloat(payAmount),
-      note: payNote,
-      date: serverTimestamp(),
-      createdBy: user?.email || '',
-    });
-    setPayOpen(false);
-    setPayAmount('');
-    setPayNote('');
-    setPayWorker(null);
-    setPaySaving(false);
-    loadAll();
-  }
-
-  // Atolye users only see their own tasks
   const visibleTasks = role === 'atolye' ? tasks.filter(t => t.assignedTo === user?.uid) : tasks;
   const filtered = visibleTasks.filter(t => tab === 'all' || t.status === tab);
 
@@ -99,34 +70,10 @@ export default function FasonPage() {
     hakEdis: visibleTasks.filter(t => t.status === 'done').reduce((s, t) => s + (t.price ?? 0), 0),
   };
 
-  // Atölye bazlı istatistik
-  const workerStats = workers.map(w => {
-    const hakedis = tasks.filter(t => t.assignedTo === w.uid && t.status === 'done').reduce((s, t) => s + (t.price ?? 0), 0);
-    const odenen = payments.filter(p => p.workerId === w.uid).reduce((s, p) => s + p.amount, 0);
-    return {
-      ...w,
-      done: tasks.filter(t => t.assignedTo === w.uid && t.status === 'done').length,
-      inProg: tasks.filter(t => t.assignedTo === w.uid && t.status === 'in_progress').length,
-      hakedis,
-      odenen,
-      kalan: hakedis - odenen,
-    };
-  });
-
-  function openAdd() {
-    setEditing(null);
-    setForm(emptyForm);
-    setOpen(true);
-  }
-
+  function openAdd() { setEditing(null); setForm(emptyForm); setOpen(true); }
   function openEdit(t: Task) {
     setEditing(t);
-    setForm({
-      title: t.title, description: t.description,
-      assignedTo: t.assignedTo, assignedToName: t.assignedToName,
-      price: t.price, showPriceToWorkshop: t.showPriceToWorkshop,
-      category: t.category, note: t.note, dueDate: t.dueDate || '',
-    });
+    setForm({ title: t.title, description: t.description, assignedTo: t.assignedTo, assignedToName: t.assignedToName, price: t.price, showPriceToWorkshop: t.showPriceToWorkshop, category: t.category, note: t.note, dueDate: t.dueDate || '' });
     setOpen(true);
   }
 
@@ -134,29 +81,16 @@ export default function FasonPage() {
     if (!form.title.trim() || !form.assignedTo) return;
     setSaving(true);
     const worker = workers.find(w => w.uid === form.assignedTo);
-    const payload = {
-      ...form,
-      assignedToName: worker?.name || worker?.email || form.assignedToName,
-    };
+    const payload = { ...form, assignedToName: worker?.name || worker?.email || form.assignedToName };
     try {
       if (editing?.id) {
         await updateDoc(doc(db, 'tasks', editing.id), payload);
       } else {
-        await addDoc(collection(db, 'tasks'), {
-          ...payload,
-          status: 'todo',
-          createdBy: user?.uid || '',
-          createdByName: user?.displayName || user?.email || '',
-          createdAt: serverTimestamp(),
-          startedAt: null,
-          completedAt: null,
-        });
+        await addDoc(collection(db, 'tasks'), { ...payload, status: 'todo', createdBy: user?.uid || '', createdByName: user?.displayName || user?.email || '', createdAt: serverTimestamp(), startedAt: null, completedAt: null });
       }
       setOpen(false);
       loadAll();
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function remove(id: string) {
@@ -166,19 +100,34 @@ export default function FasonPage() {
   }
 
   async function changeStatus(t: Task, status: Task['status']) {
+    setChangingStatus(t.id!);
     const update: Record<string, unknown> = { status };
     if (status === 'in_progress') update.startedAt = serverTimestamp();
     if (status === 'done') update.completedAt = serverTimestamp();
     await updateDoc(doc(db, 'tasks', t.id!), update);
+    await loadAll();
+    setChangingStatus(null);
+  }
+
+  async function togglePaid(t: Task) {
+    const { updateDoc: upd, doc: fDoc, serverTimestamp: sts } = await import('firebase/firestore');
+    await upd(fDoc(db, 'tasks', t.id!), { paid: !t.paid, paidAt: !t.paid ? sts() : null });
     loadAll();
   }
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'all', label: 'Tümü' },
     { key: 'todo', label: 'Yapılacak' },
-    { key: 'in_progress', label: 'Devam Ediyor' },
-    { key: 'done', label: 'Tamamlandı' },
+    { key: 'in_progress', label: 'Devam' },
+    { key: 'done', label: 'Tamam' },
   ];
+
+  const workerPayMap = workers.reduce((acc, w) => {
+    const hakedis = tasks.filter(t => t.assignedTo === w.uid && t.status === 'done').reduce((s, t) => s + (t.price ?? 0), 0);
+    const odenen = payments.filter(p => p.workerId === w.uid).reduce((s, p) => s + p.amount, 0);
+    acc[w.uid] = { hakedis, odened: odenen, kalan: hakedis - odenen };
+    return acc;
+  }, {} as Record<string, { hakedis: number; odened: number; kalan: number }>);
 
   return (
     <>
@@ -187,7 +136,7 @@ export default function FasonPage() {
           <div className="page-title">Fason Takip</div>
           <div className="page-sub">{visibleTasks.length} görev</div>
         </div>
-        {(role === 'admin' || role === 'mudur') && (
+        {isAdmin && (
           <button className="btn btn-primary" onClick={openAdd}>
             <IconPlus size={16} /> Yeni Görev
           </button>
@@ -197,202 +146,190 @@ export default function FasonPage() {
       <div className="page-content">
 
         {/* Stat kartları */}
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
-          <div className="stat-card accent-orange">
-            <div className="stat-label">Toplam Görev</div>
-            <div className="stat-value">{loading ? '—' : stats.total}</div>
-          </div>
-          <div className="stat-card accent-blue">
-            <div className="stat-label">Devam Eden</div>
-            <div className="stat-value">{loading ? '—' : stats.inProgress}</div>
-          </div>
-          <div className="stat-card accent-green">
-            <div className="stat-label">Tamamlanan</div>
-            <div className="stat-value">{loading ? '—' : stats.done}</div>
-          </div>
-          <div className="stat-card accent-red">
-            <div className="stat-label">Toplam Hakediş</div>
-            <div className="stat-value" style={{ fontSize: 20 }}>
-              {loading ? '—' : `₺${stats.hakEdis.toLocaleString('tr-TR')}`}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, marginBottom: 16 }}>
+          {[
+            { label: 'Toplam', value: stats.total, color: '#E85D04' },
+            { label: 'Devam Eden', value: stats.inProgress, color: '#3b82f6' },
+            { label: 'Tamamlanan', value: stats.done, color: '#10b981' },
+            { label: 'Toplam Hakediş', value: `₺${stats.hakEdis.toLocaleString('tr-TR')}`, color: '#f59e0b', small: true },
+          ].map(s => (
+            <div key={s.label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>{s.label}</div>
+              <div style={{ fontSize: s.small ? 18 : 24, fontWeight: 800, color: s.color }}>{loading ? '—' : s.value}</div>
             </div>
-          </div>
+          ))}
         </div>
 
-
-        {/* Tab + Görev Listesi */}
-        <div className="card">
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 4, padding: '12px 16px 0', borderBottom: '1px solid var(--border)' }}>
-            {tabs.map(t => (
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', paddingBottom: 2 }}>
+          {tabs.map(t => {
+            const count = t.key === 'all' ? visibleTasks.length : visibleTasks.filter(x => x.status === t.key).length;
+            const active = tab === t.key;
+            return (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 style={{
-                  padding: '7px 16px', borderRadius: '8px 8px 0 0', border: 'none', cursor: 'pointer',
-                  fontSize: 13, fontWeight: tab === t.key ? 700 : 500,
-                  background: tab === t.key ? 'var(--or-tint)' : 'transparent',
-                  color: tab === t.key ? 'var(--or)' : 'var(--text-3)',
-                  borderBottom: tab === t.key ? '2px solid var(--or)' : '2px solid transparent',
+                  flexShrink: 0, padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600,
+                  background: active ? 'var(--or)' : 'var(--card)',
+                  color: active ? '#fff' : 'var(--text-3)',
+                  display: 'flex', alignItems: 'center', gap: 6,
                 }}
               >
                 {t.label}
-                <span style={{ marginLeft: 6, fontSize: 11, background: 'var(--surface-2)', borderRadius: 10, padding: '1px 7px' }}>
-                  {t.key === 'all' ? visibleTasks.length : visibleTasks.filter(x => x.status === t.key).length}
-                </span>
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  background: active ? 'rgba(255,255,255,.25)' : 'var(--bg)',
+                  color: active ? '#fff' : 'var(--text-3)',
+                  borderRadius: 10, padding: '1px 7px',
+                }}>{count}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
-          <div className="table-wrap">
-            {loading ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
-            ) : filtered.length === 0 ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Görev yok</div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Başlık</th>
-                    <th>Atanan</th>
-                    <th>Kategori</th>
-                    <th>Durum</th>
-                    <th>Hakediş</th>
-                    <th>Ödeme</th>
-                    <th>Tarih</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(t => (
-                    <tr key={t.id}>
-                      <td style={{ fontWeight: 600 }}>
+        {/* Görev Kartları */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>Yükleniyor…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>Bu kategoride görev yok</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filtered.map(t => {
+              const cfg = STATUS_CONFIG[t.status];
+              const isChanging = changingStatus === t.id;
+              const showPrice = role !== 'atolye' || t.showPriceToWorkshop;
+
+              return (
+                <div key={t.id} style={{
+                  background: 'var(--card)', border: '1px solid var(--border)',
+                  borderRadius: 14, overflow: 'hidden',
+                  borderLeft: `4px solid ${cfg.dot}`,
+                }}>
+                  {/* Card Header */}
+                  <div style={{ padding: '14px 14px 0 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)', marginBottom: 4, lineHeight: 1.3 }}>
                         {t.title}
-                        {t.description && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{t.description}</div>}
-                      </td>
-                      <td>{t.assignedToName}</td>
-                      <td>{t.category ? <span className="badge badge-blue">{t.category}</span> : '—'}</td>
-                      <td>
-                        <select
-                          value={t.status}
-                          onChange={e => changeStatus(t, e.target.value as Task['status'])}
-                          style={{ background: 'var(--surface-2)', color: 'var(--text-1)', border: '1px solid var(--border-2)', borderRadius: 6, padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}
-                        >
-                          <option value="todo">Yapılacak</option>
-                          <option value="in_progress">Devam Ediyor</option>
-                          <option value="done">Tamamlandı</option>
-                        </select>
-                      </td>
-                      <td style={{ fontWeight: 700, color: '#E85D04' }}>
-                        {(role !== 'atolye' || t.showPriceToWorkshop) ? `₺${(t.price ?? 0).toLocaleString('tr-TR')}` : '—'}
-                      </td>
-                      <td>
-                        {t.status === 'done' && (role === 'admin' || role === 'mudur') && (
-                          <button
-                            onClick={async () => {
-                              await import('firebase/firestore').then(async ({ updateDoc, doc: fDoc, serverTimestamp }) => {
-                                await updateDoc(fDoc(db, 'tasks', t.id!), {
-                                  paid: !t.paid,
-                                  paidAt: !t.paid ? serverTimestamp() : null,
-                                });
-                              });
-                              loadAll();
-                            }}
-                            style={{
-                              fontSize: 11, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600,
-                              background: t.paid ? '#d1fae5' : '#fee2e2',
-                              color: t.paid ? '#065f46' : '#991b1b',
-                            }}
-                          >
-                            {t.paid ? '✓ Ödendi' : 'Bekliyor'}
-                          </button>
-                        )}
-                        {t.status === 'done' && role !== 'admin' && role !== 'mudur' && (
-                          <span style={{ fontSize: 11, color: t.paid ? '#065f46' : '#991b1b', fontWeight: 600 }}>
-                            {t.paid ? '✓ Ödendi' : 'Bekliyor'}
+                      </div>
+                      {t.description && (
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 6, lineHeight: 1.4 }}>{t.description}</div>
+                      )}
+                      {/* Meta row */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>
+                          👤 {t.assignedToName || '—'}
+                        </span>
+                        {t.category && (
+                          <span style={{ fontSize: 11, background: 'rgba(59,130,246,.15)', color: '#60a5fa', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>
+                            {t.category}
                           </span>
                         )}
-                      </td>
-                      <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{fmtDate(t.createdAt)}</td>
-                      <td>
-                        {(role === 'admin' || role === 'mudur') && (
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button className="btn btn-secondary btn-sm" onClick={() => openEdit(t)}><IconEdit size={13} /></button>
-                            <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.1)', color: '#F87171' }} onClick={() => remove(t.id!)}><IconTrash size={13} /></button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Ödeme Yap Modal */}
-      {payOpen && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setPayOpen(false)}>
-          <div className="modal-box" style={{ maxWidth: 400 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700 }}>
-                Ödeme Yap{payWorker ? ` — ${payWorker.name || payWorker.email}` : ''}
-              </h3>
-              <button onClick={() => setPayOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={20} /></button>
-            </div>
-            {!payWorker && (
-              <div className="form-group">
-                <label className="form-label">Atölye Çalışanı *</label>
-                <select className="form-input" value="" onChange={e => {
-                  const w = workers.find(x => x.uid === e.target.value);
-                  if (w) setPayWorker(w);
-                }}>
-                  <option value="">Çalışan Seç</option>
-                  {workers.map(w => (
-                    <option key={w.uid} value={w.uid}>{w.name || w.email}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {payWorker && (() => {
-              const workerStat = workerStats.find(w => w.uid === payWorker.uid);
-              return workerStat && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
-                  {[
-                    { label: 'Toplam Hakediş', value: `₺${workerStat.hakedis.toLocaleString('tr-TR')}`, color: 'var(--primary)' },
-                    { label: 'Ödenen', value: `₺${workerStat.odenen.toLocaleString('tr-TR')}`, color: '#10b981' },
-                    { label: 'Kalan', value: `₺${workerStat.kalan.toLocaleString('tr-TR')}`, color: workerStat.kalan > 0 ? '#f59e0b' : '#6b7280' },
-                  ].map(s => (
-                    <div key={s.label} style={{ background: 'var(--bg)', borderRadius: 8, padding: '8px 10px', textAlign: 'center', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: s.color }}>{s.value}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
+                      </div>
                     </div>
-                  ))}
+
+                    {/* Edit / Delete */}
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button
+                          onClick={() => openEdit(t)}
+                          style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <IconEdit size={14} />
+                        </button>
+                        <button
+                          onClick={() => remove(t.id!)}
+                          style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(248,113,113,.1)', border: '1px solid rgba(248,113,113,.2)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <IconTrash size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tarih + Hakediş row */}
+                  <div style={{ padding: '10px 14px', display: 'flex', flexWrap: 'wrap', gap: '6px 16px', borderBottom: '1px solid var(--border)' }}>
+                    {/* Başlangıç */}
+                    {!!t.createdAt && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Başlangıç</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>{fmtDate(t.createdAt)}</span>
+                      </div>
+                    )}
+                    {/* Bitiş */}
+                    {t.dueDate && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bitiş</span>
+                        <span style={{
+                          fontSize: 12, fontWeight: 700,
+                          color: t.status !== 'done' && new Date(t.dueDate) < new Date() ? '#f87171' : 'var(--text-2)',
+                        }}>{new Date(t.dueDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                      </div>
+                    )}
+                    {/* Hakediş */}
+                    {showPrice && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto' }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hakediş</span>
+                        <span style={{ fontSize: 14, color: '#E85D04', fontWeight: 800 }}>₺{(t.price ?? 0).toLocaleString('tr-TR')}</span>
+                      </div>
+                    )}
+                    {/* Ödeme durumu (tamamlanan görevler) */}
+                    {t.status === 'done' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {isAdmin ? (
+                          <button
+                            onClick={() => togglePaid(t)}
+                            style={{
+                              fontSize: 11, padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 700,
+                              background: t.paid ? 'rgba(16,185,129,.15)' : 'rgba(248,113,113,.15)',
+                              color: t.paid ? '#10b981' : '#f87171',
+                            }}
+                          >
+                            {t.paid ? '✓ Ödendi' : '⏳ Ödeme Bekliyor'}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: t.paid ? '#10b981' : '#f87171' }}>
+                            {t.paid ? '✓ Ödendi' : '⏳ Ödeme Bekliyor'}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Durum Butonları */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0 }}>
+                    {(['todo', 'in_progress', 'done'] as Task['status'][]).map((s, i) => {
+                      const c = STATUS_CONFIG[s];
+                      const active = t.status === s;
+                      return (
+                        <button
+                          key={s}
+                          disabled={isChanging || (!isAdmin && role === 'atolye' && s === 'todo')}
+                          onClick={() => !active && changeStatus(t, s)}
+                          style={{
+                            padding: '10px 4px', border: 'none', cursor: active ? 'default' : 'pointer',
+                            borderRight: i < 2 ? '1px solid var(--border)' : 'none',
+                            background: active ? c.bg : 'transparent',
+                            color: active ? c.color : 'var(--text-3)',
+                            fontSize: 12, fontWeight: active ? 700 : 500,
+                            transition: 'all .15s',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                            opacity: isChanging ? 0.5 : 1,
+                          }}
+                        >
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? c.dot : 'var(--border)', flexShrink: 0 }} />
+                          {c.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
-            })()}
-            <div className="form-group">
-              <label className="form-label">Ödeme Tutarı (₺) *</label>
-              <input className="form-input" type="number" min={0} value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" autoFocus />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Not</label>
-              <input className="form-input" value={payNote} onChange={e => setPayNote(e.target.value)} placeholder="Opsiyonel not..." />
-            </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setPayOpen(false)}>İptal</button>
-              <button
-                className="btn btn-primary"
-                onClick={savePayment}
-                disabled={paySaving || !payAmount || parseFloat(payAmount) <= 0}
-                style={{ background: '#10b981' }}
-              >
-                {paySaving ? 'Kaydediliyor...' : '✓ Ödemeyi Kaydet'}
-              </button>
-            </div>
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Görev Modal */}
       {open && (
@@ -418,9 +355,7 @@ export default function FasonPage() {
                 <label className="form-label">Atanan Kişi *</label>
                 <select className="form-input" value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}>
                   <option value="">Kişi Seç</option>
-                  {workers.map(w => (
-                    <option key={w.uid} value={w.uid}>{w.name || w.email}</option>
-                  ))}
+                  {workers.map(w => <option key={w.uid} value={w.uid}>{w.name || w.email}</option>)}
                 </select>
               </div>
               <div className="form-group">
@@ -440,28 +375,14 @@ export default function FasonPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="form-group" style={{ display: 'none' }}></div>
-              <div className="form-group">
-                <label className="form-label">Atölyeye Fiyat Göster</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, showPriceToWorkshop: !f.showPriceToWorkshop }))}
-                    style={{
-                      width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-                      background: form.showPriceToWorkshop ? '#E85D04' : 'var(--surface-3)',
-                      position: 'relative', transition: 'background .2s',
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute', top: 2, width: 20, height: 20, borderRadius: '50%',
-                      background: '#fff', transition: 'left .2s',
-                      left: form.showPriceToWorkshop ? 22 : 2,
-                    }} />
-                  </button>
-                  <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{form.showPriceToWorkshop ? 'Görünür' : 'Gizli'}</span>
-                </div>
+            <div className="form-group">
+              <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Atölyeye Fiyat Göster</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button type="button" onClick={() => setForm(f => ({ ...f, showPriceToWorkshop: !f.showPriceToWorkshop }))}
+                  style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: form.showPriceToWorkshop ? '#E85D04' : 'var(--surface-3)', position: 'relative', transition: 'background .2s' }}>
+                  <span style={{ position: 'absolute', top: 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s', left: form.showPriceToWorkshop ? 22 : 2 }} />
+                </button>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{form.showPriceToWorkshop ? 'Görünür' : 'Gizli'}</span>
               </div>
             </div>
 
