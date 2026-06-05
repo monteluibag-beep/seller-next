@@ -29,7 +29,7 @@ function fmtDate(ts: unknown): string {
 }
 
 export default function FasonPage() {
-  const { user, role } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workers, setWorkers] = useState<AppUser[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -46,7 +46,8 @@ export default function FasonPage() {
   const [histWorkerUid, setHistWorkerUid] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
-  const isAdmin = role === 'admin' || role === 'mudur';
+  // Kesin yetkisiz roller: atolye ve sales — geri kalan her şey (admin/mudur/null) yetkili
+  const isAdmin = role !== 'atolye' && role !== 'sales';
 
   useEffect(() => { loadAll(); }, []);
 

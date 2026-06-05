@@ -5,11 +5,15 @@ import { auth } from '@/lib/firebase';
 
 async function fetchRole(uid: string): Promise<string | null> {
   try {
-    const { collection, query, where, getDocs } = await import('firebase/firestore');
+    const { collection, query, where, getDocs, getDoc, doc } = await import('firebase/firestore');
     const { db } = await import('@/lib/firebase');
+    // Önce uid alanına göre ara
     const snap = await getDocs(query(collection(db, 'users'), where('uid', '==', uid)));
-    if (snap.empty) return null;
-    return (snap.docs[0].data().role as string) ?? null;
+    if (!snap.empty) return (snap.docs[0].data().role as string) ?? null;
+    // Bulunamazsa doküman ID'si olarak dene (eski oluşturulmuş hesaplar)
+    const docSnap = await getDoc(doc(db, 'users', uid));
+    if (docSnap.exists()) return (docSnap.data().role as string) ?? null;
+    return null;
   } catch {
     return null;
   }
