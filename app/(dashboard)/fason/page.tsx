@@ -487,7 +487,14 @@ export default function FasonPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Hakediş (₺)</label>
-                <input className="form-input" type="number" min={0} value={form.price} onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} />
+                <input
+                  className="form-input"
+                  type="number"
+                  min={0}
+                  value={form.price === 0 ? '' : form.price}
+                  placeholder="0"
+                  onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))}
+                />
               </div>
             </div>
             <div className="form-group">
