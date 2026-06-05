@@ -97,15 +97,20 @@ export default function FasonPage() {
   function openAdd() { setEditing(null); setForm(emptyForm); setOpen(true); }
   function openEdit(t: Task) {
     setEditing(t);
-    setForm({ title: t.title, description: t.description, assignedTo: t.assignedTo, assignedToName: t.assignedToName, price: t.price, showPriceToWorkshop: t.showPriceToWorkshop, category: t.category, note: t.note, dueDate: t.dueDate || '' });
+    setForm({ title: t.title, description: t.description || '', assignedTo: t.assignedTo, assignedToName: t.assignedToName, price: t.price, showPriceToWorkshop: t.showPriceToWorkshop, category: t.category || t.title, note: t.note || '', dueDate: t.dueDate || '' });
     setOpen(true);
   }
 
   async function save() {
-    if (!form.title.trim() || !form.assignedTo) return;
+    if (!form.category.trim() || !form.assignedTo) return;
     setSaving(true);
     const worker = workers.find(w => w.uid === form.assignedTo);
-    const payload = { ...form, assignedToName: worker?.name || worker?.email || form.assignedToName };
+    // title = category (tek alan kullanıyoruz)
+    const payload = {
+      ...form,
+      title: form.category,
+      assignedToName: worker?.name || worker?.email || form.assignedToName,
+    };
     try {
       if (editing?.id) {
         await updateDoc(doc(db, 'tasks', editing.id), payload);
@@ -465,33 +470,26 @@ export default function FasonPage() {
       {/* Görev Modal */}
       {open && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setOpen(false)}>
-          <div className="modal-box" style={{ maxWidth: 520 }}>
+          <div className="modal-box" style={{ maxWidth: 440 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700 }}>{editing ? 'Görevi Düzenle' : 'Yeni Görev'}</h3>
               <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={20} /></button>
             </div>
+
             <div className="form-group">
-              <label className="form-label">Başlık *</label>
-              <input className="form-input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Görev başlığı" />
+              <label className="form-label">Görev *</label>
+              <input className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Dikiş, Baskı, Askı takımı..." autoFocus />
             </div>
+
             <div className="form-group">
-              <label className="form-label">Açıklama</label>
-              <textarea className="form-input" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Detaylar..." style={{ resize: 'vertical' }} />
+              <label className="form-label">Atanan Kişi *</label>
+              <select className="form-input" value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}>
+                <option value="">Kişi Seç</option>
+                {workers.map(w => <option key={w.uid} value={w.uid}>{w.name || w.email}</option>)}
+              </select>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="form-group">
-                <label className="form-label">Atanan Kişi *</label>
-                <select className="form-input" value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}>
-                  <option value="">Kişi Seç</option>
-                  {workers.map(w => <option key={w.uid} value={w.uid}>{w.name || w.email}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Kategori</label>
-                <input className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Dikiş, Baskı..." />
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+            <div className="form-row-2">
               <div className="form-group">
                 <label className="form-label">Bitiş Tarihi</label>
                 <input className="form-input" type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
@@ -508,6 +506,7 @@ export default function FasonPage() {
                 />
               </div>
             </div>
+
             <div className="form-group">
               <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Atölyeye Fiyat Göster</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -518,13 +517,10 @@ export default function FasonPage() {
                 <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{form.showPriceToWorkshop ? 'Görünür' : 'Gizli'}</span>
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Not</label>
-              <textarea className="form-input" rows={2} value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Ek notlar..." style={{ resize: 'vertical' }} />
-            </div>
+
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <button className="btn btn-secondary" onClick={() => setOpen(false)}>İptal</button>
-              <button className="btn btn-primary" onClick={save} disabled={saving || !form.title.trim() || !form.assignedTo}>
+              <button className="btn btn-primary" onClick={save} disabled={saving || !form.category.trim() || !form.assignedTo}>
                 {saving ? 'Kaydediliyor...' : editing ? 'Güncelle' : 'Kaydet'}
               </button>
             </div>

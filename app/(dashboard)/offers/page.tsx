@@ -457,7 +457,7 @@ export default function OffersPage() {
             </div>
 
             {/* Row 1: Customer + Note + Currency */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, marginBottom: 16 }}>
+            <div className="form-row-2-auto" style={{ marginBottom: 16 }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Müşteri Adı *</label>
                 <input className="form-input" value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Müşteri adı" />
@@ -630,12 +630,11 @@ export default function OffersPage() {
 
             {/* Profit analysis panel — internal only */}
             {items.length > 0 && (
-              <div style={{
+              <div className="profit-panel" style={{
                 background: 'rgba(232,93,4,.06)',
                 border: '1px solid rgba(232,93,4,.15)',
                 borderRadius: 10, padding: '12px 16px',
                 marginBottom: 16,
-                display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12,
               }}>
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 3 }}>

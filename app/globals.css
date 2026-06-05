@@ -364,6 +364,12 @@ input[type="number"]::-webkit-outer-spin-button { opacity: .4; }
 /* Mobile card list — hidden on desktop */
 .mob-card-list { display: none; }
 
+/* Form grid helpers — collapse to 1 col on mobile */
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.form-row-2-auto { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; }
+.profit-panel { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+
 /* Mobile FAB */
 .mob-fab {
   display: none;
@@ -415,6 +421,17 @@ input[type="number"]::-webkit-outer-spin-button { opacity: .4; }
   /* Mobile card list replaces table */
   .mob-card-list { display: flex; flex-direction: column; gap: 10px; }
   .mob-hide-table { display: none !important; }
+
+  /* Form grids collapse to single column inside modals */
+  .form-row-2,
+  .form-row-3,
+  .form-row-2-auto { grid-template-columns: 1fr !important; }
+
+  /* Profit panel: 2x2 on mobile */
+  .profit-panel { grid-template-columns: 1fr 1fr !important; }
+
+  /* Modal scroll & padding */
+  .modal-box { overflow-y: auto; padding-bottom: 24px; }
 
   /* PDF modal fullscreen */
   .pdf-modal-bar { padding: 8px 12px !important; }

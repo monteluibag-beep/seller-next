@@ -348,7 +348,7 @@ export default function SalesPage() {
               <button onClick={() => { setOpen(false); resetForm(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa' }}><IconX size={20} /></button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="form-row-2" style={{ marginBottom: 16 }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Müşteri Adı *</label>
                 <input className="form-input" value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Müşteri adı" />
@@ -390,45 +390,70 @@ export default function SalesPage() {
             </div>
 
             {cart.length > 0 && (
-              <div style={{ border: '1px solid #e0e0e0', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
-                <table style={{ width: '100%' }}>
-                  <thead>
-                    <tr>
-                      <th>Ürün</th>
-                      <th style={{ width: 80 }}>Adet</th>
-                      <th style={{ width: 110 }}>Birim Fiyat</th>
-                      <th style={{ width: 100 }}>Toplam</th>
-                      <th style={{ width: 36 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cart.map(item => (
-                      <tr key={item.productId}>
-                        <td style={{ fontWeight: 500 }}>{item.name}</td>
-                        <td>
-                          <input
-                            type="number" min={1} value={item.qty}
-                            onChange={e => updateQty(item.productId, parseInt(e.target.value) || 1)}
-                            style={{ width: 70, padding: '4px 8px', border: '1px solid #e0e0e0', borderRadius: 6, fontSize: 13 }}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number" min={0} value={item.price}
-                            onChange={e => updatePrice(item.productId, parseFloat(e.target.value) || 0)}
-                            style={{ width: 100, padding: '4px 8px', border: '1px solid #e0e0e0', borderRadius: 6, fontSize: 13 }}
-                          />
-                        </td>
-                        <td style={{ fontWeight: 600 }}>₺{(item.price * item.qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                        <td>
-                          <button onClick={() => removeFromCart(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}>
-                            <IconTrash size={14} />
-                          </button>
-                        </td>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+                {/* Desktop tablo */}
+                <div className="mob-hide-table" style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>Ürün</th>
+                        <th style={{ width: 80 }}>Adet</th>
+                        <th style={{ width: 110 }}>Birim Fiyat</th>
+                        <th style={{ width: 100 }}>Toplam</th>
+                        <th style={{ width: 36 }}></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {cart.map(item => (
+                        <tr key={item.productId}>
+                          <td style={{ fontWeight: 500 }}>{item.name}</td>
+                          <td>
+                            <input type="number" min={1} value={item.qty} onChange={e => updateQty(item.productId, parseInt(e.target.value) || 1)}
+                              style={{ width: 70, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, background: 'var(--bg)', color: 'var(--text-1)' }} />
+                          </td>
+                          <td>
+                            <input type="number" min={0} value={item.price} onChange={e => updatePrice(item.productId, parseFloat(e.target.value) || 0)}
+                              style={{ width: 100, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, background: 'var(--bg)', color: 'var(--text-1)' }} />
+                          </td>
+                          <td style={{ fontWeight: 600 }}>₺{(item.price * item.qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                          <td>
+                            <button onClick={() => removeFromCart(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}>
+                              <IconTrash size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Mobil kart listesi */}
+                <div className="mob-card-list" style={{ padding: 10 }}>
+                  {cart.map(item => (
+                    <div key={item.productId} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)', flex: 1, paddingRight: 8 }}>{item.name}</span>
+                        <button onClick={() => removeFromCart(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', flexShrink: 0 }}>
+                          <IconTrash size={15} />
+                        </button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3 }}>ADET</div>
+                          <input type="number" min={1} value={item.qty} onChange={e => updateQty(item.productId, parseInt(e.target.value) || 1)}
+                            className="form-input" style={{ padding: '6px 10px', fontSize: 14 }} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3 }}>BİRİM FİYAT (₺)</div>
+                          <input type="number" min={0} value={item.price} onChange={e => updatePrice(item.productId, parseFloat(e.target.value) || 0)}
+                            className="form-input" style={{ padding: '6px 10px', fontSize: 14 }} />
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', marginTop: 8, fontWeight: 700, color: '#E85D04', fontSize: 14 }}>
+                        Toplam: ₺{(item.price * item.qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
