@@ -164,6 +164,17 @@ export default function FasonPage() {
         )}
       </div>
 
+      {/* Mobil FAB — topbar gizlenince görünür */}
+      {isAdmin && (
+        <button
+          onClick={openAdd}
+          className="mob-fab"
+          aria-label="Yeni Görev"
+        >
+          <IconPlus size={22} />
+        </button>
+      )}
+
       <div className="page-content">
 
         {/* Stat kartları */}

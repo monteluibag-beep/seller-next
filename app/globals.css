@@ -364,6 +364,30 @@ input[type="number"]::-webkit-outer-spin-button { opacity: .4; }
 /* Mobile card list — hidden on desktop */
 .mob-card-list { display: none; }
 
+/* Mobile FAB */
+.mob-fab {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mob-fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: calc(var(--bottom-nav-h) + 16px);
+    right: 18px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--or);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(232,93,4,.45);
+    z-index: 200;
+  }
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .sidebar { display: none !important; }
