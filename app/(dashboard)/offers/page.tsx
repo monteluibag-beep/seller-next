@@ -309,6 +309,9 @@ export default function OffersPage() {
           <IconPlus size={16} /> Yeni Teklif
         </button>
       </div>
+      <button className="mob-fab" onClick={() => setOpen(true)} aria-label="Yeni Teklif">
+        <IconPlus size={22} />
+      </button>
 
       <div className="page-content">
         <div className="card">

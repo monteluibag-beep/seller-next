@@ -255,6 +255,9 @@ export default function SalesPage() {
           <IconPlus size={16} /> Yeni Satış
         </button>
       </div>
+      <button className="mob-fab" onClick={() => setOpen(true)} aria-label="Yeni Satış">
+        <IconPlus size={22} />
+      </button>
 
       <div className="page-content">
         <div className="card">
