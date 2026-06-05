@@ -407,16 +407,38 @@ input[type="number"]::-webkit-outer-spin-button { opacity: .4; }
   table { min-width: 480px; font-size: 12px; }
   .form-input { font-size: 16px !important; }
 
-  /* Modal: fullscreen on mobile */
-  .modal-overlay { padding: 0; align-items: flex-end; }
+  /* Modal: bottom sheet on mobile */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+    background: rgba(0,0,0,.6);
+  }
   .modal-box {
-    padding: 18px 16px;
-    border-radius: 16px 16px 0 0;
+    padding: 0 0 32px;
+    border-radius: 20px 20px 0 0;
     width: 100%;
     max-width: 100% !important;
     max-height: 92vh;
     margin: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
+  /* Drag handle */
+  .modal-box::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: rgba(255,255,255,.15);
+    border-radius: 2px;
+    margin: 12px auto 0;
+  }
+  /* Modal header & body padding */
+  .modal-box > * { padding-left: 18px; padding-right: 18px; }
+  .modal-box > *:first-child { padding-top: 16px; }
+  /* Override: form-group, form-label, inputs get full width */
+  .modal-box .form-group { margin-bottom: 14px; }
+  .modal-box .form-input { font-size: 16px !important; }
 
   /* Mobile card list replaces table */
   .mob-card-list { display: flex; flex-direction: column; gap: 10px; }
