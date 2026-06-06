@@ -374,7 +374,13 @@ input[type="number"]::-webkit-outer-spin-button { opacity: .4; }
 .mob-fab {
   display: none;
 }
+.mob-fab-group {
+  display: none;
+}
 @media (max-width: 768px) {
+  .mob-fab-group {
+    display: flex !important;
+  }
   .mob-fab {
     display: flex;
     align-items: center;

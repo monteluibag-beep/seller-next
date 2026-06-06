@@ -41,7 +41,7 @@ function generateCode(prefix: string, products: Product[], catName: string): str
 
 const selectAll = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
 
-type ScanTarget = 'search' | 'barcode' | null;
+type ScanTarget = 'search' | 'barcode' | 'add' | null;
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -54,9 +54,17 @@ export default function ProductsPage() {
   const [codeManual, setCodeManual] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scanTarget, setScanTarget] = useState<ScanTarget>(null);
+  const [barcodeError, setBarcodeError] = useState('');
+  const [fabOpen, setFabOpen] = useState(false);
+  const [toast, setToast] = useState('');
   const photoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); loadCats(); }, []);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3000);
+  }
 
   async function load() {
     setLoading(true);
@@ -83,11 +91,13 @@ export default function ProductsPage() {
     return generateCode(cat.prefix, products, catName);
   }
 
-  function openAdd() {
+  function openAdd(prefillBarcode?: string) {
     setEditing(null);
-    setForm({ ...empty, barcode: generateBarcode(products) });
+    setBarcodeError('');
+    setForm({ ...empty, barcode: prefillBarcode ?? generateBarcode(products) });
     setCodeManual(false);
     setOpen(true);
+    setFabOpen(false);
   }
 
   function exportCSV() {
@@ -97,9 +107,7 @@ export default function ProductsPage() {
       `"${(p.code || '').replace(/"/g, '""')}"`,
       `"${(p.barcode || '').replace(/"/g, '""')}"`,
       `"${(p.catName || '').replace(/"/g, '""')}"`,
-      p.cost ?? 0,
-      p.list ?? 0,
-      p.stock ?? 0,
+      p.cost ?? 0, p.list ?? 0, p.stock ?? 0,
     ]);
     const csv = '﻿' + [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -113,35 +121,27 @@ export default function ProductsPage() {
 
   function openEdit(p: Product) {
     setEditing(p);
+    setBarcodeError('');
     setForm({
-      name: p.name || '',
-      code: p.code || '',
-      barcode: p.barcode || '',
-      cost: p.cost ?? 0,
-      list: p.list ?? 0,
-      stock: p.stock ?? 0,
-      photo: p.photo || '',
-      catName: p.catName || '',
+      name: p.name || '', code: p.code || '', barcode: p.barcode || '',
+      cost: p.cost ?? 0, list: p.list ?? 0, stock: p.stock ?? 0,
+      photo: p.photo || '', catName: p.catName || '',
     });
     setCodeManual(true);
     setOpen(true);
   }
 
   function openCopy(p: Product) {
-    setEditing(null); // yeni ürün olarak kaydedilecek
+    setEditing(null);
+    setBarcodeError('');
     const newBarcode = generateBarcode(products);
     const newCode = p.catName ? autoCode(p.catName) : '';
     setForm({
-      name: p.name || '',
-      code: newCode,
-      barcode: newBarcode,
-      cost: p.cost ?? 0,
-      list: p.list ?? 0,
-      stock: 0,
-      photo: p.photo || '',
-      catName: p.catName || '',
+      name: p.name || '', code: newCode, barcode: newBarcode,
+      cost: p.cost ?? 0, list: p.list ?? 0, stock: 0,
+      photo: p.photo || '', catName: p.catName || '',
     });
-    setCodeManual(!newCode); // kod otomatik üretilemediyse manuel moda geç
+    setCodeManual(!newCode);
     setOpen(true);
   }
 
@@ -160,8 +160,20 @@ export default function ProductsPage() {
     }
   }
 
+  function checkBarcodeDuplicate(barcode: string): Product | undefined {
+    if (!barcode.trim()) return undefined;
+    return products.find(p => p.barcode === barcode && p.id !== editing?.id);
+  }
+
   async function save() {
     if (!form.name.trim()) return;
+    // Barkod duplicate kontrolü
+    const dup = checkBarcodeDuplicate(form.barcode);
+    if (dup) {
+      setBarcodeError(`Bu barkod zaten "${dup.name}" ürününe ait!`);
+      return;
+    }
+    setBarcodeError('');
     setSaving(true);
     try {
       if (editing?.id) {
@@ -211,10 +223,27 @@ export default function ProductsPage() {
   function handleScanDetect(val: string) {
     if (scanTarget === 'search') {
       setSearch(val);
+      setScanTarget(null);
     } else if (scanTarget === 'barcode') {
-      set('barcode', val);
+      const dup = checkBarcodeDuplicate(val);
+      if (dup) {
+        setBarcodeError(`Bu barkod zaten "${dup.name}" ürününe ait!`);
+      } else {
+        setBarcodeError('');
+        set('barcode', val);
+      }
+      setScanTarget(null);
+    } else if (scanTarget === 'add') {
+      setScanTarget(null);
+      // Barkod sistemde var mı?
+      const existing = products.find(p => p.barcode === val);
+      if (existing) {
+        showToast(`⚠️ Bu barkod zaten kayıtlı: "${existing.name}"`);
+        return;
+      }
+      // Yok → yeni ürün formunu barkodla aç
+      openAdd(val);
     }
-    setScanTarget(null);
   }
 
   return (
@@ -228,7 +257,7 @@ export default function ProductsPage() {
           <button className="btn btn-secondary" onClick={exportCSV} title="CSV olarak dışa aktar">
             <IconDownload size={16} /> CSV
           </button>
-          <button className="btn btn-primary" onClick={openAdd}>
+          <button className="btn btn-primary" onClick={() => openAdd()}>
             <IconPlus size={16} /> Yeni Ürün
           </button>
         </div>
@@ -257,6 +286,7 @@ export default function ProductsPage() {
               </button>
             </div>
           </div>
+
           {/* Desktop table */}
           <div className="table-wrap mob-hide-table">
             {loading ? (
@@ -267,15 +297,8 @@ export default function ProductsPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>Foto</th>
-                    <th>Ürün Adı</th>
-                    <th>Kod</th>
-                    <th>Barkod</th>
-                    <th>Kategori</th>
-                    <th>Maliyet</th>
-                    <th>Liste</th>
-                    <th>Stok</th>
-                    <th></th>
+                    <th>Foto</th><th>Ürün Adı</th><th>Kod</th><th>Barkod</th>
+                    <th>Kategori</th><th>Maliyet</th><th>Liste</th><th>Stok</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,21 +311,12 @@ export default function ProductsPage() {
                         }
                       </td>
                       <td style={{ fontWeight: 600 }}>{p.name}</td>
-                      <td>
-                        {p.code
-                          ? <code style={{ background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 4, fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{p.code}</code>
-                          : <span style={{ color: 'var(--text-3)' }}>—</span>
-                        }
-                      </td>
+                      <td>{p.code ? <code style={{ background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 4, fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{p.code}</code> : <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                       <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{p.barcode || '—'}</td>
                       <td>{p.catName ? <span className="badge badge-blue">{p.catName}</span> : '—'}</td>
                       <td>₺{(p.cost ?? 0).toLocaleString('tr-TR')}</td>
                       <td style={{ fontWeight: 700 }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</td>
-                      <td>
-                        <span style={{ fontWeight: 700, color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>
-                          {p.stock}
-                        </span>
-                      </td>
+                      <td><span style={{ fontWeight: 700, color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</span></td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} title="Düzenle"><IconEdit size={13} /></button>
@@ -324,16 +338,11 @@ export default function ProductsPage() {
             ) : filtered.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Ürün bulunamadı</div>
             ) : filtered.map(p => (
-              <div key={p.id} style={{
-                display: 'flex', gap: 12, padding: '12px 14px',
-                borderBottom: '1px solid var(--border)', alignItems: 'center',
-              }}>
-                {/* Photo */}
+              <div key={p.id} style={{ display: 'flex', gap: 12, padding: '12px 14px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
                 {p.photo
                   ? <img src={p.photo} alt={p.name} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
                   : <div style={{ width: 52, height: 52, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconPhoto size={20} color="var(--text-3)" /></div>
                 }
-                {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', marginBottom: 3 }}>{p.name}</div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -345,11 +354,10 @@ export default function ProductsPage() {
                     <span style={{ color: 'var(--text-3)' }}>Stok: <strong style={{ color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</strong></span>
                   </div>
                 </div>
-                {/* Actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} title="Düzenle"><IconEdit size={13} /></button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => openCopy(p)} title="Kopyala" style={{ color: 'var(--or)' }}><IconCopy size={13} /></button>
-                  <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.1)', color: '#F87171' }} onClick={() => remove(p.id!)} title="Sil"><IconTrash size={13} /></button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)}><IconEdit size={13} /></button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => openCopy(p)} style={{ color: 'var(--or)' }}><IconCopy size={13} /></button>
+                  <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.1)', color: '#F87171' }} onClick={() => remove(p.id!)}><IconTrash size={13} /></button>
                 </div>
               </div>
             ))}
@@ -357,149 +365,170 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* ── Mobil FAB (speed dial) ── */}
+      {fabOpen && (
+        <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+      )}
+      <div style={{ position: 'fixed', bottom: 'calc(var(--bottom-nav-h) + 16px)', right: 18, zIndex: 200, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}
+        className="mob-fab-group">
+        {/* Sub buttons */}
+        {fabOpen && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ background: 'rgba(0,0,0,.75)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 8, whiteSpace: 'nowrap' }}>Manuel Ekle</span>
+              <button onClick={() => openAdd()} style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,.3)' }}>
+                <IconPlus size={20} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ background: 'rgba(0,0,0,.75)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 8, whiteSpace: 'nowrap' }}>Barkod ile Ekle</span>
+              <button onClick={() => { setFabOpen(false); setScanTarget('add'); }} style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--or)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,.3)' }}>
+                <IconScan size={20} />
+              </button>
+            </div>
+          </>
+        )}
+        {/* Ana FAB */}
+        <button
+          className="mob-fab"
+          onClick={() => setFabOpen(v => !v)}
+          style={{ transform: fabOpen ? 'rotate(45deg)' : 'none', transition: 'transform .2s' }}
+        >
+          <IconPlus size={22} />
+        </button>
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 'calc(var(--bottom-nav-h) + 80px)', left: '50%', transform: 'translateX(-50%)', background: '#1a1a1a', color: '#fff', padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, zIndex: 999, boxShadow: '0 4px 20px rgba(0,0,0,.4)', border: '1px solid rgba(255,255,255,.1)', whiteSpace: 'nowrap', maxWidth: '90vw', textAlign: 'center' }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Ürün Formu Modal */}
       {open && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setOpen(false)}>
           <div className="modal-box">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 18px 12px', borderBottom: '1px solid var(--border)' }}>
               <h3 style={{ fontSize: 16, fontWeight: 700 }}>{editing ? 'Ürünü Düzenle' : 'Yeni Ürün'}</h3>
-              <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={20} /></button>
+              <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4 }}><IconX size={20} /></button>
             </div>
 
-            {/* Photo */}
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              {form.photo
-                ? <img src={form.photo} alt="" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 10, marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
-                : <div style={{ width: 96, height: 96, background: 'var(--surface-2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}><IconPhoto size={32} color="var(--text-3)" /></div>
-              }
-              <input ref={photoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhoto} />
-              <button className="btn btn-secondary btn-sm" onClick={() => photoRef.current?.click()}>
-                <IconCamera size={13} /> Fotoğraf Seç
-              </button>
-            </div>
+            <div style={{ padding: '14px 18px 0' }}>
+              {/* Photo */}
+              <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                {form.photo
+                  ? <img src={form.photo} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
+                  : <div style={{ width: 80, height: 80, background: 'var(--surface-2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}><IconPhoto size={28} color="var(--text-3)" /></div>
+                }
+                <input ref={photoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhoto} />
+                <button className="btn btn-secondary btn-sm" onClick={() => photoRef.current?.click()}>
+                  <IconCamera size={13} /> Fotoğraf Seç
+                </button>
+              </div>
 
-            {/* Kategori */}
-            <div className="form-group">
-              <label className="form-label">Kategori</label>
-              <select className="form-input" value={form.catName} onChange={e => handleCatChange(e.target.value)}>
-                <option value="">Kategori Seç</option>
-                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </select>
-            </div>
+              {/* Kategori + Ürün Adı */}
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Kategori</label>
+                  <select className="form-input" value={form.catName} onChange={e => handleCatChange(e.target.value)}>
+                    <option value="">Kategori Seç</option>
+                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Ürün Adı *</label>
+                  <input className="form-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Sırt Çantası M" />
+                </div>
+              </div>
 
-            <div className="form-group">
-              <label className="form-label">Ürün Adı *</label>
-              <input className="form-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Sırt Çantası M" />
-            </div>
+              {/* Ürün Kodu + Barkod */}
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Stok Kodu</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {form.catName && (
+                        <button type="button" onClick={regenerateCode} title="Yeniden üret"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--or)', display: 'flex', alignItems: 'center', padding: 0 }}>
+                          <IconRefresh size={12} />
+                        </button>
+                      )}
+                      <label style={{ fontWeight: 400, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: 10 }}>
+                        <input type="checkbox" checked={codeManual} onChange={e => setCodeManual(e.target.checked)} />
+                        Manuel
+                      </label>
+                    </div>
+                  </label>
+                  <input
+                    className="form-input"
+                    value={form.code}
+                    onChange={e => { setCodeManual(true); set('code', e.target.value); }}
+                    placeholder={form.catName ? autoCode(form.catName) || 'Otomatik' : 'Kategori seçin'}
+                    style={{ fontFamily: 'monospace', background: codeManual ? undefined : 'rgba(232,93,4,.05)', borderColor: codeManual ? undefined : 'rgba(232,93,4,.3)' }}
+                  />
+                  {!codeManual && form.catName && (
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>Otomatik üretiliyor</div>
+                  )}
+                </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {/* Ürün Kodu */}
-              <div className="form-group">
-                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Ürün Kodu</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {form.catName && (
-                      <button
-                        type="button"
-                        onClick={regenerateCode}
-                        title="Kodu yeniden üret"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--or)', display: 'flex', alignItems: 'center', padding: 0 }}
-                      >
-                        <IconRefresh size={12} />
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Barkod (EAN-13)</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <button type="button" onClick={() => { setBarcodeError(''); setScanTarget('barcode'); }} title="Kamera ile tara"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--or)', display: 'flex', alignItems: 'center', padding: 0 }}>
+                        <IconScan size={13} />
                       </button>
-                    )}
-                    <label style={{ fontWeight: 400, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: 10 }}>
-                      <input type="checkbox" checked={codeManual} onChange={e => setCodeManual(e.target.checked)} />
-                      Manuel
-                    </label>
-                  </div>
-                </label>
-                <input
-                  className="form-input"
-                  value={form.code}
-                  onChange={e => { setCodeManual(true); set('code', e.target.value); }}
-                  placeholder={form.catName ? autoCode(form.catName) || 'Otomatik' : 'Önce kategori seçin'}
-                  style={{ fontFamily: 'monospace', background: codeManual ? undefined : 'rgba(232,93,4,.05)', borderColor: codeManual ? undefined : 'rgba(232,93,4,.3)' }}
-                />
-                {!codeManual && form.catName && (
-                  <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>
-                    {categories.find(c => c.name === form.catName)?.prefix}-{new Date().getFullYear().toString().slice(-2)}-XXX formatında otomatik
-                  </div>
-                )}
+                      {!editing && (
+                        <button type="button" onClick={() => { set('barcode', generateBarcode(products)); setBarcodeError(''); }} title="Yeni barkod üret"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--or)', display: 'flex', alignItems: 'center', padding: 0 }}>
+                          <IconRefresh size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </label>
+                  <input
+                    className="form-input"
+                    value={form.barcode}
+                    onChange={e => { set('barcode', e.target.value); if (barcodeError) setBarcodeError(''); }}
+                    onBlur={e => {
+                      const dup = checkBarcodeDuplicate(e.target.value);
+                      setBarcodeError(dup ? `Bu barkod zaten "${dup.name}" ürününe ait!` : '');
+                    }}
+                    placeholder="8690000000000"
+                    style={{ fontFamily: 'monospace', letterSpacing: 1, borderColor: barcodeError ? '#f87171' : undefined }}
+                  />
+                  {barcodeError
+                    ? <div style={{ fontSize: 11, color: '#f87171', marginTop: 3, fontWeight: 600 }}>⚠️ {barcodeError}</div>
+                    : !editing && form.barcode && <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>EAN-13 otomatik üretildi</div>
+                  }
+                </div>
               </div>
 
-              {/* Barkod */}
-              <div className="form-group">
-                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Barkod (EAN-13)</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <button
-                      type="button"
-                      onClick={() => setScanTarget('barcode')}
-                      title="Kamera ile barkod tara"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--or)', display: 'flex', alignItems: 'center', padding: 0 }}
-                    >
-                      <IconScan size={13} />
-                    </button>
-                    {!editing && (
-                      <button
-                        type="button"
-                        onClick={() => set('barcode', generateBarcode(products))}
-                        title="Yeni barkod üret"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--or)', display: 'flex', alignItems: 'center', padding: 0 }}
-                      >
-                        <IconRefresh size={12} />
-                      </button>
-                    )}
-                  </div>
-                </label>
-                <input
-                  className="form-input"
-                  value={form.barcode}
-                  onChange={e => set('barcode', e.target.value)}
-                  placeholder="8690000000000"
-                  style={{ fontFamily: 'monospace', letterSpacing: 1 }}
-                />
-                {!editing && form.barcode && (
-                  <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>
-                    EAN-13 otomatik üretildi · elle düzenleyebilirsiniz
-                  </div>
-                )}
+              {/* Fiyat + Stok */}
+              <div className="form-row-3">
+                <div className="form-group">
+                  <label className="form-label">Maliyet (₺)</label>
+                  <input className="form-input" type="number" min={0} value={form.cost} onFocus={selectAll} onChange={e => set('cost', parseFloat(e.target.value) || 0)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Liste Fiyatı (₺)</label>
+                  <input className="form-input" type="number" min={0} value={form.list} onFocus={selectAll} onChange={e => set('list', parseFloat(e.target.value) || 0)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Stok Adedi</label>
+                  <input className="form-input" type="number" min={0} value={form.stock} onFocus={selectAll} onChange={e => set('stock', parseInt(e.target.value) || 0)} />
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <div className="form-group">
-                <label className="form-label">Maliyet (₺)</label>
-                <input
-                  className="form-input" type="number" min={0}
-                  value={form.cost}
-                  onFocus={selectAll}
-                  onChange={e => set('cost', parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Liste Fiyatı (₺)</label>
-                <input
-                  className="form-input" type="number" min={0}
-                  value={form.list}
-                  onFocus={selectAll}
-                  onChange={e => set('list', parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Stok Adedi</label>
-                <input
-                  className="form-input" type="number" min={0}
-                  value={form.stock}
-                  onFocus={selectAll}
-                  onChange={e => set('stock', parseInt(e.target.value) || 0)}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <button className="btn btn-secondary" onClick={() => setOpen(false)}>İptal</button>
-              <button className="btn btn-primary" onClick={save} disabled={saving || !form.name.trim()}>
+            {/* Footer */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, padding: '8px 18px 12px' }}>
+              <button className="btn btn-secondary" onClick={() => setOpen(false)} style={{ width: '100%' }}>İptal</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving || !form.name.trim() || !!barcodeError} style={{ width: '100%' }}>
                 {saving ? 'Kaydediliyor...' : editing ? 'Güncelle' : 'Kaydet'}
               </button>
             </div>
