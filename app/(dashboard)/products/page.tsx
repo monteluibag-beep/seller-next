@@ -41,6 +41,27 @@ function generateCode(prefix: string, products: Product[], catName: string): str
 
 const selectAll = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
 
+// İskonto kademeleri (offers sayfasıyla aynı)
+const DISCOUNT_TIERS = [
+  { qty: 1000, rate: 55 }, { qty: 500, rate: 50 }, { qty: 200, rate: 40 },
+  { qty: 100, rate: 35 }, { qty:  50, rate: 30 }, { qty:  40, rate: 25 },
+  { qty:  30, rate: 22 }, { qty:  20, rate: 18 }, { qty:  10, rate: 15 },
+];
+const MAX_DISCOUNT = DISCOUNT_TIERS[0].rate; // 1000+ adette %55
+const MIN_MARGIN   = 10; // %10 minimum kâr
+
+/**
+ * 1000+ adette %10 kâr korunacak şekilde liste fiyatı:
+ *   liste × (1 − maxDiscount/100) ≥ maliyet × (1 + minMargin/100)
+ *   liste ≥ maliyet × (1 + minMargin/100) / (1 − maxDiscount/100)
+ * Sonuç 5'in katına yuvarlanır (görsel netlik).
+ */
+function recommendedList(cost: number): number {
+  if (!cost || cost <= 0) return 0;
+  const raw = cost * (1 + MIN_MARGIN / 100) / (1 - MAX_DISCOUNT / 100);
+  return Math.ceil(raw / 5) * 5;
+}
+
 type ScanTarget = 'search' | 'barcode' | 'add' | null;
 
 export default function ProductsPage() {
@@ -52,6 +73,7 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<Omit<Product, 'id'>>(empty);
   const [codeManual, setCodeManual] = useState(false);
+  const [listManual, setListManual] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scanTarget, setScanTarget] = useState<ScanTarget>(null);
   const [barcodeError, setBarcodeError] = useState('');
@@ -96,6 +118,7 @@ export default function ProductsPage() {
     setBarcodeError('');
     setForm({ ...empty, barcode: prefillBarcode ?? generateBarcode(products) });
     setCodeManual(false);
+    setListManual(false);
     setOpen(true);
     setFabOpen(false);
   }
@@ -128,6 +151,7 @@ export default function ProductsPage() {
       photo: p.photo || '', catName: p.catName || '',
     });
     setCodeManual(true);
+    setListManual(true); // düzenleme modunda liste fiyatı mevcut değeri koru
     setOpen(true);
   }
 
@@ -142,6 +166,7 @@ export default function ProductsPage() {
       photo: p.photo || '', catName: p.catName || '',
     });
     setCodeManual(!newCode);
+    setListManual(true);
     setOpen(true);
   }
 
@@ -512,11 +537,48 @@ export default function ProductsPage() {
               <div className="form-row-3">
                 <div className="form-group">
                   <label className="form-label">Maliyet (₺)</label>
-                  <input className="form-input" type="number" min={0} value={form.cost} onFocus={selectAll} onChange={e => set('cost', parseFloat(e.target.value) || 0)} />
+                  <input
+                    className="form-input" type="number" min={0}
+                    value={form.cost} onFocus={selectAll}
+                    onChange={e => {
+                      const cost = parseFloat(e.target.value) || 0;
+                      setForm(f => ({
+                        ...f,
+                        cost,
+                        // Liste fiyatı manuel değilse otomatik güncelle
+                        list: listManual ? f.list : recommendedList(cost),
+                      }));
+                    }}
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Liste Fiyatı (₺)</label>
-                  <input className="form-input" type="number" min={0} value={form.list} onFocus={selectAll} onChange={e => set('list', parseFloat(e.target.value) || 0)} />
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Liste Fiyatı (₺)</span>
+                    {form.cost > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setForm(f => ({ ...f, list: recommendedList(f.cost) })); setListManual(false); }}
+                        title="Tavsiye fiyatına sıfırla"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--or)', display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, padding: 0 }}
+                      >
+                        <IconRefresh size={11} /> Tavsiye
+                      </button>
+                    )}
+                  </label>
+                  <input
+                    className="form-input" type="number" min={0}
+                    value={form.list} onFocus={selectAll}
+                    onChange={e => { setListManual(true); set('list', parseFloat(e.target.value) || 0); }}
+                    style={{ borderColor: !listManual && form.cost > 0 ? 'rgba(232,93,4,.4)' : undefined, background: !listManual && form.cost > 0 ? 'rgba(232,93,4,.04)' : undefined }}
+                  />
+                  {form.cost > 0 && (
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, lineHeight: 1.4 }}>
+                      {listManual
+                        ? `Tavsiye: ₺${recommendedList(form.cost).toLocaleString('tr-TR')} · 1000 adette %${MIN_MARGIN} kâr`
+                        : `1000 adette %${MIN_MARGIN} kâr güvenceli (${MAX_DISCOUNT}% iskonto sonrası ₺${(form.list * (1 - MAX_DISCOUNT / 100)).toFixed(2)})`
+                      }
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Stok Adedi</label>
