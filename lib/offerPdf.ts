@@ -105,14 +105,18 @@ export function generateOfferHtml(offer: Offer, firm: FirmInfo): string {
     <div class="bottom-info-grid">
       ${firm.bankInfo?.trim() ? `
       <div class="info-section">
-        <div class="info-section-title">Hesap Bilgilerimiz</div>
-        <div style="font-family:monospace;font-size:11px;color:#444;line-height:1.8;white-space:pre-wrap;">${esc(firm.bankInfo.trim())}</div>
-      </div>` : ''}
+        <div class="info-section-inner">
+          <div class="info-section-title">Hesap Bilgilerimiz</div>
+          <div style="font-family:monospace;font-size:10.5px;color:#444;line-height:1.8;white-space:pre-wrap;">${esc(firm.bankInfo.trim())}</div>
+        </div>
+      </div>` : '<div class="info-section"></div>'}
       ${firm.invoiceInfo?.trim() ? `
       <div class="info-section">
-        <div class="info-section-title">Fatura Bilgilerimiz</div>
-        <div style="font-size:11px;color:#444;line-height:1.8;white-space:pre-wrap;">${esc(firm.invoiceInfo.trim())}</div>
-      </div>` : ''}
+        <div class="info-section-inner">
+          <div class="info-section-title">Fatura Bilgilerimiz</div>
+          <div style="font-size:10.5px;color:#444;line-height:1.8;white-space:pre-wrap;">${esc(firm.invoiceInfo.trim())}</div>
+        </div>
+      </div>` : '<div class="info-section"></div>'}
     </div>` : '';
 
   return `<!DOCTYPE html>
@@ -124,257 +128,218 @@ export function generateOfferHtml(offer: Offer, firm: FirmInfo): string {
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      font-size: 12.5px;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
       color: #222;
       background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
-    /* ── A4 preview wrapper (screen only) ── */
+    @page {
+      size: A4;
+      margin: 14mm 14mm 16mm 14mm;
+    }
+
+    /* Screen preview wrapper */
     @media screen {
-      body { background: #e0e0e0; padding: 24px 0; }
+      body { background: #e8e8e8; padding: 28px 0 40px; }
       .a4 {
         width: 210mm;
         min-height: 297mm;
         margin: 0 auto;
         background: #fff;
-        box-shadow: 0 4px 24px rgba(0,0,0,.18);
+        box-shadow: 0 6px 32px rgba(0,0,0,.18);
         padding: 14mm 14mm 18mm;
-        position: relative;
       }
     }
 
-    /* ── Print: A4, repeating header ── */
+    /* Print: natural flow, @page handles margins */
     @media print {
-      @page {
-        size: A4;
-        margin: 0;
-      }
-      body { background: #fff; }
-      .a4 {
-        width: 210mm;
-        padding: 14mm 14mm 18mm;
-      }
-      /* Fixed header repeats on every print page */
-      .print-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        padding: 10mm 14mm 6mm;
-        background: #fff;
-        border-bottom: 2px solid #E85D04;
-        z-index: 100;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      /* Push content below the fixed header */
-      .content-wrap {
-        margin-top: 38mm;
-      }
-      /* First page: content flows right after the info box, no extra margin */
-      .first-page-content {
-        margin-top: 0;
-      }
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      body { background: #fff; padding: 0; }
+      .a4  { width: 100%; padding: 0; }
     }
 
-    /* ── Orange top stripe ── */
-    .stripe { height: 7px; background: #E85D04; margin-bottom: 0; }
-
-    /* ── Header (non-print) ── */
+    /* ── Header ── */
     .doc-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 14px 0 10px;
-      border-bottom: 2px solid #E85D04;
-      margin-bottom: 14px;
+      display: table;
+      width: 100%;
+      border-bottom: 2.5px solid #E85D04;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
     }
-    .firm-contact { font-size: 10.5px; color: #666; line-height: 1.65; margin-top: 5px; }
-    .offer-badge { text-align: right; }
-    .offer-badge .title { font-size: 24px; font-weight: 800; color: #E85D04; line-height: 1; }
-    .offer-badge .no    { font-size: 12px; color: #444; margin-top: 3px; font-weight: 600; }
-    .offer-badge .date  { font-size: 11px; color: #888; margin-top: 2px; }
+    .doc-header-left  { display: table-cell; vertical-align: middle; width: 60%; }
+    .doc-header-right { display: table-cell; vertical-align: middle; text-align: right; }
+    .firm-contact { font-size: 10px; color: #666; line-height: 1.65; margin-top: 5px; }
+    .offer-badge .title { font-size: 22px; font-weight: 800; color: #E85D04; line-height: 1; }
+    .offer-badge .no    { font-size: 12px; color: #444; margin-top: 3px; font-weight: 700; }
+    .offer-badge .date  { font-size: 10px; color: #888; margin-top: 2px; }
     .offer-badge .cur   { font-size: 10px; color: #E85D04; margin-top: 3px; font-weight: 700; letter-spacing: .5px; }
-
-    /* Print header (separate from doc-header) */
-    .print-header { display: none; }
-    @media print {
-      .print-header { display: flex; }
-      .doc-header { border-bottom: none; padding-bottom: 0; }
-    }
 
     /* ── Info box ── */
     .info-box {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      display: table;
+      width: 100%;
       background: #F5F5F5;
-      border-radius: 6px;
-      padding: 10px 14px;
-      margin-bottom: 16px;
-      gap: 8px;
+      border-radius: 5px;
+      padding: 9px 12px;
+      margin-bottom: 14px;
     }
-    .info-label { font-size: 9.5px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+    .info-box-row { display: table-row; }
+    .info-cell { display: table-cell; width: 25%; padding: 0 6px; border-right: 1px solid #E0E0E0; }
+    .info-cell:first-child { padding-left: 0; }
+    .info-cell:last-child  { border-right: none; }
+    .info-label { font-size: 9px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
     .info-value { font-size: 12px; font-weight: 700; color: #222; }
 
     /* ── Table ── */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 0;
-    }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
     thead tr { background: #EEEEEE; }
     th {
-      padding: 8px 9px;
-      font-size: 9.5px;
+      padding: 7px 8px;
+      font-size: 9px;
       font-weight: 700;
       color: #555;
       text-transform: uppercase;
       letter-spacing: .3px;
     }
     td {
-      padding: 7px 9px;
+      padding: 7px 8px;
       border-bottom: 1px solid #EEEEEE;
-      font-size: 12px;
+      font-size: 11.5px;
       vertical-align: middle;
     }
-    tbody tr:nth-child(even) { background: #FAFAFA; }
+    tbody tr:nth-child(even) td { background: #FAFAFA; }
     .c  { text-align: center; }
     .r  { text-align: right; }
     .fw { font-weight: 700; }
-    .sub-row td { border: none; padding: 4px 9px; font-size: 11.5px; background: #fff !important; }
+    .sub-row td { border: none; padding: 3px 8px; font-size: 11px; background: #fff !important; }
 
     /* ── Totals ── */
-    .total-wrap { display: flex; justify-content: flex-end; margin: 10px 0 16px; }
+    .total-wrap { text-align: right; margin: 8px 0 14px; }
     .total-box {
+      display: inline-block;
       background: #E85D04;
       color: #fff;
-      border-radius: 6px;
-      padding: 10px 18px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
+      border-radius: 5px;
+      padding: 8px 16px;
     }
-    .total-label  { font-size: 10px; font-weight: 700; letter-spacing: .6px; opacity: .85; }
-    .total-amount { font-size: 17px; font-weight: 800; }
+    .total-label  { font-size: 9px; font-weight: 700; letter-spacing: .6px; opacity: .85; }
+    .total-amount { font-size: 16px; font-weight: 800; }
 
     /* ── Note / Terms ── */
     .note-box {
       background: #FAFAFA;
       border: 1px solid #DDD;
-      border-radius: 5px;
-      padding: 8px 12px;
-      margin-bottom: 10px;
-      font-size: 11.5px;
+      border-radius: 4px;
+      padding: 7px 11px;
+      margin-bottom: 9px;
+      font-size: 11px;
       color: #444;
       line-height: 1.6;
     }
 
     /* ── Bottom info grid (bank + invoice) ── */
     .bottom-info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 14px;
+      display: table;
+      width: 100%;
+      margin-top: 12px;
     }
-    .info-section {
+    .bottom-info-grid .info-section {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding-right: 8px;
+    }
+    .bottom-info-grid .info-section:last-child { padding-right: 0; padding-left: 8px; }
+    .info-section-inner {
       border: 1px solid #E8E8E8;
-      border-radius: 6px;
-      padding: 10px 12px;
+      border-radius: 5px;
+      padding: 9px 11px;
       background: #FAFAFA;
     }
     .info-section-title {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 700;
       color: #E85D04;
       text-transform: uppercase;
       letter-spacing: .5px;
-      margin-bottom: 6px;
-      padding-bottom: 5px;
+      margin-bottom: 5px;
+      padding-bottom: 4px;
       border-bottom: 1px solid #E8E8E8;
     }
 
-    /* Terms section (full width) */
+    /* Terms section */
     .terms-section {
-      margin-top: 12px;
+      margin-top: 10px;
       border: 1px solid #FCD34D;
-      border-radius: 6px;
-      padding: 10px 14px;
+      border-radius: 5px;
+      padding: 9px 12px;
       background: #FFFBEB;
     }
     .terms-section .info-section-title { color: #92400E; border-bottom-color: #FCD34D; }
 
     /* ── Footer ── */
     .footer {
-      margin-top: 20px;
-      padding-top: 10px;
+      margin-top: 18px;
+      padding-top: 8px;
       border-top: 1px solid #DDD;
-      display: flex;
-      justify-content: space-between;
-      font-size: 9.5px;
+      display: table;
+      width: 100%;
+      font-size: 9px;
       color: #999;
     }
+    .footer-cell { display: table-cell; }
+    .footer-cell:last-child { text-align: right; }
+    .footer-cell:nth-child(2) { text-align: center; }
 
+    /* Print helpers */
     @media print {
-      .stripe { display: none; }
       table { page-break-inside: auto; }
-      tr     { page-break-inside: avoid; }
-      thead  { display: table-header-group; }
+      tr    { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
     }
   </style>
 </head>
 <body>
   <div class="a4">
-    <!-- Orange stripe (screen only) -->
-    <div class="stripe"></div>
 
-    <!-- PRINT repeating header: shown only when printing, fixed top -->
-    <div class="print-header">
-      <div>
-        ${logoHtml}
-        <div class="firm-contact">${contactHtml}</div>
-      </div>
-      <div class="offer-badge">
-        <div class="title">TEKLİF</div>
-        <div class="no">${esc(offer.no)}</div>
-        <div class="date">${fmtDate(offer.date)}</div>
-        ${cur !== 'TRY' ? `<div class="cur">${cur} CİNSİNDEN</div>` : ''}
-      </div>
-    </div>
-
-    <!-- Screen header (inside normal flow) -->
+    <!-- Header -->
     <div class="doc-header">
-      <div>
+      <div class="doc-header-left">
         ${logoHtml}
         <div class="firm-contact">${contactHtml}</div>
       </div>
-      <div class="offer-badge">
-        <div class="title">TEKLİF</div>
-        <div class="no">${esc(offer.no)}</div>
-        <div class="date">${fmtDate(offer.date)}</div>
-        ${cur !== 'TRY' ? `<div class="cur">${cur} CİNSİNDEN</div>` : ''}
+      <div class="doc-header-right">
+        <div class="offer-badge">
+          <div class="title">TEKLİF</div>
+          <div class="no">${esc(offer.no)}</div>
+          <div class="date">${fmtDate(offer.date)}</div>
+          ${cur !== 'TRY' ? `<div class="cur">${cur} CİNSİNDEN</div>` : ''}
+        </div>
       </div>
     </div>
 
     <!-- Customer info box -->
     <div class="info-box">
-      <div>
-        <div class="info-label">Müşteri</div>
-        <div class="info-value">${esc(offer.customer)}</div>
-      </div>
-      <div>
-        <div class="info-label">Teklif No</div>
-        <div class="info-value">${esc(offer.no)}</div>
-      </div>
-      <div>
-        <div class="info-label">Hazırlayan</div>
-        <div class="info-value">${esc(offer.by)}</div>
-      </div>
-      <div>
-        <div class="info-label">Tarih</div>
-        <div class="info-value">${fmtDate(offer.date)}</div>
+      <div class="info-box-row">
+        <div class="info-cell">
+          <div class="info-label">Müşteri</div>
+          <div class="info-value">${esc(offer.customer)}</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-label">Teklif No</div>
+          <div class="info-value">${esc(offer.no)}</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-label">Hazırlayan</div>
+          <div class="info-value">${esc(offer.by)}</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-label">Tarih</div>
+          <div class="info-value">${fmtDate(offer.date)}</div>
+        </div>
       </div>
     </div>
 
@@ -410,9 +375,9 @@ export function generateOfferHtml(offer: Offer, firm: FirmInfo): string {
 
     <!-- Footer -->
     <div class="footer">
-      <span>${esc(firm.name)}</span>
-      <span>${firm.email ? esc(firm.email) : ''}</span>
-      <span>${firm.phone ? esc(firm.phone) : ''}</span>
+      <div class="footer-cell">${esc(firm.name)}</div>
+      <div class="footer-cell">${firm.email ? esc(firm.email) : ''}</div>
+      <div class="footer-cell">${firm.phone ? esc(firm.phone) : ''}</div>
     </div>
   </div>
 </body>
