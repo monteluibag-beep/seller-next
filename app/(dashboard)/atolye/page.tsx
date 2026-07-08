@@ -281,7 +281,11 @@ export default function AtölyelerPage() {
   const [payWorker, setPayWorker] = useState<WorkerStat | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payNote, setPayNote] = useState('');
+  const [payDate, setPayDate] = useState('');   // boşsa bugün
   const [paySaving, setPaySaving] = useState(false);
+
+  // Bugünün tarihini YYYY-MM-DD formatında döndür
+  const todayStr = new Date().toISOString().split('T')[0];
 
   // Ödeme Geçmişi modal
   const [histOpen, setHistOpen] = useState(false);
@@ -331,17 +335,24 @@ export default function AtölyelerPage() {
   async function savePayment() {
     if (!payWorker || !payAmount || parseFloat(payAmount) <= 0) return;
     setPaySaving(true);
+    // Geçmişe dönük tarih seçildiyse Timestamp, yoksa serverTimestamp
+    const dateValue = payDate
+      ? new Date(payDate + 'T12:00:00')
+      : null;
     await addDoc(collection(db, 'payments'), {
       workerId: payWorker.worker.uid,
       workerName: payWorker.worker.name || payWorker.worker.email,
       amount: parseFloat(payAmount),
       note: payNote,
-      date: serverTimestamp(),
+      date: dateValue ?? serverTimestamp(),
+      isBackdated: !!payDate,
       createdBy: user?.email || '',
+      createdAt: serverTimestamp(),
     });
     setPayOpen(false);
     setPayAmount('');
     setPayNote('');
+    setPayDate('');
     setPayWorker(null);
     setPaySaving(false);
     loadAll();
@@ -467,7 +478,7 @@ export default function AtölyelerPage() {
                   {/* Buttons */}
                   <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
                     <button
-                      onClick={() => { setPayWorker(ws); setPayAmount(''); setPayNote(''); setPayOpen(true); }}
+                      onClick={() => { setPayWorker(ws); setPayAmount(''); setPayNote(''); setPayDate(''); setPayOpen(true); }}
                       style={{
                         width: '100%', padding: '9px 0', background: '#10b981', color: '#fff', border: 'none',
                         borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -498,51 +509,124 @@ export default function AtölyelerPage() {
       {/* Ödeme Yap Modal */}
       {payOpen && payWorker && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setPayOpen(false)}>
-          <div className="modal-box" style={{ maxWidth: 420 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700 }}>
-                💰 Ödeme Yap — {payWorker.worker.name || payWorker.worker.email}
-              </h3>
+          <div className="modal-box" style={{ maxWidth: 440 }}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 18px 14px', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>💰 Ödeme Kaydet</div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{payWorker.worker.name || payWorker.worker.email}</div>
+              </div>
               <button onClick={() => setPayOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}>
                 <IconX size={20} />
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
-              {[
-                { label: 'Hakediş', value: `₺${payWorker.hakedis.toLocaleString('tr-TR')}`, color: '#E85D04' },
-                { label: 'Ödenen', value: `₺${payWorker.odenen.toLocaleString('tr-TR')}`, color: '#10b981' },
-                { label: 'Kalan', value: `₺${payWorker.kalan.toLocaleString('tr-TR')}`, color: payWorker.kalan > 0 ? '#f59e0b' : '#6b7280' },
-              ].map(s => (
-                <div key={s.label} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px', textAlign: 'center', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: s.color }}>{s.value}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
+            <div style={{ padding: '16px 18px 0' }}>
+
+              {/* Bakiye özeti */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
+                {[
+                  { label: 'Hakediş', value: payWorker.hakedis, color: '#E85D04' },
+                  { label: 'Ödenen',  value: payWorker.odenen,  color: '#10b981' },
+                  { label: 'Kalan',   value: payWorker.kalan,   color: payWorker.kalan > 0 ? '#f59e0b' : '#6b7280' },
+                ].map(s => (
+                  <div key={s.label} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 6px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: s.color }}>₺{s.value.toLocaleString('tr-TR')}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tarih — geçmişe dönük seçim */}
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Ödeme Tarihi</span>
+                  {payDate && payDate !== todayStr && (
+                    <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>📅 Geçmişe dönük</span>
+                  )}
+                </label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    className="form-input"
+                    type="date"
+                    max={todayStr}
+                    value={payDate || todayStr}
+                    onChange={e => setPayDate(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  {payDate && payDate !== todayStr && (
+                    <button
+                      onClick={() => setPayDate('')}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-3)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Bugüne Dön
+                    </button>
+                  )}
                 </div>
-              ))}
+              </div>
+
+              {/* Tutar — büyük input */}
+              <div className="form-group">
+                <label className="form-label">Tutar (₺) *</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 20, fontWeight: 600, color: 'var(--text-3)', pointerEvents: 'none' }}>₺</span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="decimal"
+                    value={payAmount}
+                    placeholder="0"
+                    autoFocus
+                    onFocus={e => e.target.select()}
+                    onChange={e => setPayAmount(e.target.value)}
+                    style={{
+                      width: '100%', height: 56, border: '2px solid #10b981',
+                      borderRadius: 10, background: 'var(--bg)', color: '#10b981',
+                      fontSize: 26, fontWeight: 800, textAlign: 'center',
+                      paddingLeft: 32, paddingRight: 16, boxSizing: 'border-box', outline: 'none',
+                    }}
+                  />
+                </div>
+                {/* Hızlı tutar butonları */}
+                {payWorker.kalan > 0 && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Tamamını Öde', val: payWorker.kalan },
+                      { label: '½', val: Math.round(payWorker.kalan / 2) },
+                      { label: '¼', val: Math.round(payWorker.kalan / 4) },
+                    ].map(q => (
+                      <button
+                        key={q.label}
+                        onClick={() => setPayAmount(q.val.toString())}
+                        style={{
+                          padding: '5px 12px', borderRadius: 8, border: '1px solid var(--border)',
+                          background: 'var(--bg)', color: 'var(--text-2)', fontSize: 12,
+                          cursor: 'pointer', fontWeight: 600,
+                        }}
+                      >
+                        {q.label} · ₺{q.val.toLocaleString('tr-TR')}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Not */}
+              <div className="form-group">
+                <label className="form-label">Not</label>
+                <input
+                  className="form-input"
+                  value={payNote}
+                  onChange={e => setPayNote(e.target.value)}
+                  placeholder="Nakit, EFT, Havale..."
+                />
+              </div>
+
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Ödeme Tutarı (₺) *</label>
-              <input
-                className="form-input"
-                type="number"
-                min={0}
-                value={payAmount}
-                onChange={e => setPayAmount(e.target.value)}
-                placeholder="0.00"
-                autoFocus
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Not</label>
-              <input
-                className="form-input"
-                value={payNote}
-                onChange={e => setPayNote(e.target.value)}
-                placeholder="Opsiyonel not..."
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            {/* Footer */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, padding: '12px 18px 8px', borderTop: '1px solid var(--border)' }}>
               <button className="btn btn-secondary" onClick={() => setPayOpen(false)}>İptal</button>
               <button
                 className="btn btn-primary"
@@ -550,9 +634,10 @@ export default function AtölyelerPage() {
                 disabled={paySaving || !payAmount || parseFloat(payAmount) <= 0}
                 style={{ background: '#10b981', borderColor: '#10b981' }}
               >
-                {paySaving ? 'Kaydediliyor…' : '✓ Ödemeyi Kaydet'}
+                {paySaving ? 'Kaydediliyor…' : '✓ Kaydet'}
               </button>
             </div>
+
           </div>
         </div>
       )}
