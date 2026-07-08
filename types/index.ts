@@ -87,7 +87,9 @@ export interface Task {
   description: string;
   assignedTo: string;
   assignedToName: string;
-  price: number;
+  price: number;        // toplam hakediş (qty × unitPrice)
+  qty?: number;         // adet
+  unitPrice?: number;   // birim fiyat
   showPriceToWorkshop: boolean;
   status: 'todo' | 'in_progress' | 'done';
   category: string;

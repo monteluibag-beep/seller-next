@@ -19,7 +19,8 @@ const STATUS_CONFIG = {
 
 const emptyForm = {
   title: '', description: '', assignedTo: '', assignedToName: '',
-  price: 0, showPriceToWorkshop: false, category: '', note: '', dueDate: '',
+  price: 0, qty: 1, unitPrice: 0,
+  showPriceToWorkshop: false, category: '', note: '', dueDate: '',
 };
 
 function fmtDate(ts: unknown): string {
@@ -97,7 +98,7 @@ export default function FasonPage() {
   function openAdd() { setEditing(null); setForm(emptyForm); setOpen(true); }
   function openEdit(t: Task) {
     setEditing(t);
-    setForm({ title: t.title, description: t.description || '', assignedTo: t.assignedTo, assignedToName: t.assignedToName, price: t.price, showPriceToWorkshop: t.showPriceToWorkshop, category: t.category || t.title, note: t.note || '', dueDate: t.dueDate || '' });
+    setForm({ title: t.title, description: t.description || '', assignedTo: t.assignedTo, assignedToName: t.assignedToName, price: t.price, qty: t.qty ?? 1, unitPrice: t.unitPrice ?? t.price, showPriceToWorkshop: t.showPriceToWorkshop, category: t.category || t.title, note: t.note || '', dueDate: t.dueDate || '' });
     setOpen(true);
   }
 
@@ -105,10 +106,11 @@ export default function FasonPage() {
     if (!form.category.trim() || !form.assignedTo) return;
     setSaving(true);
     const worker = workers.find(w => w.uid === form.assignedTo);
-    // title = category (tek alan kullanıyoruz)
+    const totalPrice = (form.qty || 1) * (form.unitPrice || 0);
     const payload = {
       ...form,
       title: form.category,
+      price: totalPrice,
       assignedToName: worker?.name || worker?.email || form.assignedToName,
     };
     try {
@@ -289,9 +291,15 @@ export default function FasonPage() {
                       </div>
                     )}
                     {showPrice && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto' }}>
-                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hakediş</span>
-                        <span style={{ fontSize: 14, color: '#E85D04', fontWeight: 800 }}>₺{(t.price ?? 0).toLocaleString('tr-TR')}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: 'auto' }}>
+                        <span style={{ fontSize: 14, color: '#E85D04', fontWeight: 800 }}>
+                          ₺{(t.price ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                        </span>
+                        {t.qty && t.unitPrice ? (
+                          <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                            {t.qty} ad. × ₺{t.unitPrice.toLocaleString('tr-TR')}
+                          </span>
+                        ) : null}
                       </div>
                     )}
                     {t.status === 'done' && (
@@ -480,34 +488,80 @@ export default function FasonPage() {
 
             {/* Form body */}
             <div style={{ padding: '16px 18px 0' }}>
+
+              {/* Görev */}
               <div className="form-group">
                 <label className="form-label">Görev *</label>
-                <input className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Dikiş, Baskı, Askı takımı..." autoFocus />
+                <input className="form-input" value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  placeholder="Dikiş, Baskı, Askı takımı..." autoFocus />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Atanan Kişi *</label>
-                <select className="form-input" value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}>
-                  <option value="">Kişi Seç</option>
-                  {workers.map(w => <option key={w.uid} value={w.uid}>{w.name || w.email}</option>)}
-                </select>
-              </div>
-
+              {/* Atanan Kişi + Bitiş Tarihi */}
               <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Atanan Kişi *</label>
+                  <select className="form-input" value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}>
+                    <option value="">Kişi Seç</option>
+                    {workers.map(w => <option key={w.uid} value={w.uid}>{w.name || w.email}</option>)}
+                  </select>
+                </div>
                 <div className="form-group">
                   <label className="form-label">Bitiş Tarihi</label>
                   <input className="form-input" type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Hakediş (₺)</label>
-                  <input className="form-input" type="number" min={0}
-                    value={form.price === 0 ? '' : form.price} placeholder="0"
-                    onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} />
+              </div>
+
+              {/* Hakediş: Adet × Birim = Toplam */}
+              <div className="form-group" style={{ marginBottom: 8 }}>
+                <label className="form-label">Hakediş Hesabı</label>
+
+                {/* Adet × Birim satırı */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>Adet</div>
+                    <input
+                      className="form-input"
+                      type="number" min={1}
+                      value={form.qty || ''}
+                      placeholder="1"
+                      style={{ textAlign: 'center' }}
+                      onChange={e => setForm(f => ({ ...f, qty: parseInt(e.target.value) || 1 }))}
+                    />
+                  </div>
+                  <div style={{ fontSize: 20, color: 'var(--text-3)', fontWeight: 300, paddingTop: 18, flexShrink: 0 }}>×</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>Birim Fiyat</div>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-input"
+                        type="number" min={0}
+                        value={form.unitPrice || ''}
+                        placeholder="0"
+                        style={{ paddingRight: 36, textAlign: 'right' }}
+                        onChange={e => setForm(f => ({ ...f, unitPrice: parseFloat(e.target.value) || 0 }))}
+                      />
+                      <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-3)', pointerEvents: 'none' }}>₺</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Toplam (otomatik) */}
+                <div style={{
+                  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10,
+                  padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                    {form.qty || 1} ad. × ₺{(form.unitPrice || 0).toLocaleString('tr-TR')}
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#E85D04' }}>
+                    ₺{((form.qty || 1) * (form.unitPrice || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  </div>
                 </div>
               </div>
 
               {/* Fiyat toggle */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderTop: '1px solid var(--border)', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderTop: '1px solid var(--border)', marginBottom: 16, marginTop: 8 }}>
                 <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Atölyeye hakediş göster</span>
                 <button type="button" onClick={() => setForm(f => ({ ...f, showPriceToWorkshop: !f.showPriceToWorkshop }))}
                   style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: form.showPriceToWorkshop ? '#E85D04' : 'var(--surface-3)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
