@@ -517,44 +517,66 @@ export default function FasonPage() {
                 <label className="form-label">Hakediş Hesabı</label>
 
                 {/* Adet × Birim satırı */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>Adet</div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 10 }}>
+                  {/* Adet */}
+                  <div style={{ flex: '0 0 90px' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>Adet</div>
                     <input
-                      className="form-input"
                       type="number" min={1}
+                      inputMode="numeric"
                       value={form.qty || ''}
                       placeholder="1"
-                      style={{ textAlign: 'center' }}
+                      onFocus={e => e.target.select()}
                       onChange={e => setForm(f => ({ ...f, qty: parseInt(e.target.value) || 1 }))}
+                      style={{
+                        width: '100%', height: 52, border: '1px solid var(--border)',
+                        borderRadius: 10, background: 'var(--bg)', color: 'var(--text-1)',
+                        fontSize: 20, fontWeight: 700, textAlign: 'center',
+                        outline: 'none', boxSizing: 'border-box',
+                      }}
                     />
                   </div>
-                  <div style={{ fontSize: 20, color: 'var(--text-3)', fontWeight: 300, paddingTop: 18, flexShrink: 0 }}>×</div>
+
+                  {/* × */}
+                  <div style={{ fontSize: 22, color: 'var(--text-3)', fontWeight: 300, lineHeight: '52px', flexShrink: 0, paddingBottom: 0 }}>×</div>
+
+                  {/* Birim Fiyat — büyük, ortada */}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>Birim Fiyat</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>Birim Fiyat</div>
                     <div style={{ position: 'relative' }}>
+                      <span style={{
+                        position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                        fontSize: 18, fontWeight: 600, color: 'var(--text-3)', pointerEvents: 'none', lineHeight: 1,
+                      }}>₺</span>
                       <input
-                        className="form-input"
                         type="number" min={0}
+                        inputMode="decimal"
                         value={form.unitPrice || ''}
                         placeholder="0"
-                        style={{ paddingRight: 36, textAlign: 'right' }}
+                        onFocus={e => e.target.select()}
                         onChange={e => setForm(f => ({ ...f, unitPrice: parseFloat(e.target.value) || 0 }))}
+                        style={{
+                          width: '100%', height: 52, border: '2px solid var(--or)',
+                          borderRadius: 10, background: 'var(--bg)', color: '#E85D04',
+                          fontSize: 22, fontWeight: 800, textAlign: 'center',
+                          paddingLeft: 28, paddingRight: 12,
+                          outline: 'none', boxSizing: 'border-box',
+                        }}
                       />
-                      <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-3)', pointerEvents: 'none' }}>₺</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Toplam (otomatik) */}
                 <div style={{
-                  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10,
-                  padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'rgba(232,93,4,.06)', border: '1px solid rgba(232,93,4,.2)',
+                  borderRadius: 10, padding: '12px 16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
                   <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
                     {form.qty || 1} ad. × ₺{(form.unitPrice || 0).toLocaleString('tr-TR')}
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#E85D04' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#E85D04' }}>
                     ₺{((form.qty || 1) * (form.unitPrice || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
