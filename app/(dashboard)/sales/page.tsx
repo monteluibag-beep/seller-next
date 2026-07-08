@@ -7,7 +7,12 @@ import {
 import { db } from '@/lib/firebase';
 import type { Sale, SaleItem, Product } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
-import { IconPlus, IconX, IconTrash, IconSearch } from '@tabler/icons-react';
+import { IconPlus, IconX, IconTrash, IconSearch, IconChevronDown } from '@tabler/icons-react';
+import { useRates } from '@/hooks/useRates';
+
+type Currency = 'TRY' | 'USD' | 'EUR' | 'GBP';
+const CUR_SYMBOLS: Record<Currency, string> = { TRY: '₺', USD: '$', EUR: '€', GBP: '£' };
+const CUR_FLAGS:   Record<Currency, string> = { TRY: '🇹🇷', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
 
 const DISCOUNTS = [
   { qty: 1000, rate: 55 }, { qty: 500, rate: 50 }, { qty: 200, rate: 40 },
@@ -23,17 +28,24 @@ interface CartItem extends SaleItem { cost: number; listPrice: number; }
 
 export default function SalesPage() {
   const { user } = useAuth();
+  const { rates } = useRates();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [customer, setCustomer] = useState('');
   const [note, setNote] = useState('');
+  const [currency, setCurrency] = useState<Currency>('TRY');
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+
+  // Kur: TRY → seçilen döviz
+  const rate = currency === 'TRY' ? 1 : rates[currency as 'USD'|'EUR'|'GBP'];
+  const toForeign = (tryAmt: number) => tryAmt / rate;
+  const sym = CUR_SYMBOLS[currency];
 
   useEffect(() => { load(); loadProducts(); }, []);
 
@@ -93,7 +105,8 @@ export default function SalesPage() {
       }));
       await addDoc(collection(db, 'sales'), {
         customer, items, total, note,
-        discountRate, by: user?.email?.split('@')[0] || 'admin',
+        discountRate, currency, exchangeRate: rate,
+        by: user?.email?.split('@')[0] || 'admin',
         status: 'completed', date: serverTimestamp(),
       });
       for (const item of cart) {
@@ -115,7 +128,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setCustomer(''); setNote(''); setCart([]); setDiscountEnabled(false); setProductSearch('');
+    setCustomer(''); setNote(''); setCart([]); setDiscountEnabled(false); setProductSearch(''); setCurrency('TRY');
   }
 
   function formatDate(ts: unknown) {
@@ -348,7 +361,7 @@ export default function SalesPage() {
               <button onClick={() => { setOpen(false); resetForm(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa' }}><IconX size={20} /></button>
             </div>
 
-            <div className="form-row-2" style={{ marginBottom: 16 }}>
+            <div className="form-row-2" style={{ marginBottom: 12 }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Müşteri Adı *</label>
                 <input className="form-input" value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Müşteri adı" />
@@ -356,6 +369,34 @@ export default function SalesPage() {
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Not</label>
                 <input className="form-input" value={note} onChange={e => setNote(e.target.value)} placeholder="Opsiyonel not" />
+              </div>
+            </div>
+
+            {/* Para Birimi */}
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label">Para Birimi</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(['TRY','USD','EUR','GBP'] as Currency[]).map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCurrency(c)}
+                    style={{
+                      padding: '7px 16px', borderRadius: 8, border: '1px solid',
+                      cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                      borderColor: currency === c ? 'var(--or)' : 'var(--border)',
+                      background: currency === c ? 'rgba(232,93,4,.1)' : 'var(--bg)',
+                      color: currency === c ? 'var(--or)' : 'var(--text-2)',
+                    }}
+                  >
+                    {CUR_FLAGS[c]} {c}
+                  </button>
+                ))}
+                {currency !== 'TRY' && (
+                  <span style={{ fontSize: 11, color: 'var(--text-3)', alignSelf: 'center', marginLeft: 4 }}>
+                    1 {currency} = ₺{rate.toFixed(2)}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -397,62 +438,91 @@ export default function SalesPage() {
                     <thead>
                       <tr>
                         <th>Ürün</th>
-                        <th style={{ width: 80 }}>Adet</th>
-                        <th style={{ width: 110 }}>Birim Fiyat</th>
-                        <th style={{ width: 100 }}>Toplam</th>
+                        <th style={{ width: 75, textAlign: 'center' }}>Adet</th>
+                        <th style={{ width: 120, textAlign: 'right' }}>Birim ({sym})</th>
+                        <th style={{ width: 110, textAlign: 'right' }}>Hakediş ({sym})</th>
                         <th style={{ width: 36 }}></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {cart.map(item => (
-                        <tr key={item.productId}>
-                          <td style={{ fontWeight: 500 }}>{item.name}</td>
-                          <td>
-                            <input type="number" min={1} value={item.qty} onChange={e => updateQty(item.productId, parseInt(e.target.value) || 1)}
-                              style={{ width: 70, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, background: 'var(--bg)', color: 'var(--text-1)' }} />
-                          </td>
-                          <td>
-                            <input type="number" min={0} value={item.price} onChange={e => updatePrice(item.productId, parseFloat(e.target.value) || 0)}
-                              style={{ width: 100, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, background: 'var(--bg)', color: 'var(--text-1)' }} />
-                          </td>
-                          <td style={{ fontWeight: 600 }}>₺{(item.price * item.qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                          <td>
-                            <button onClick={() => removeFromCart(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}>
-                              <IconTrash size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {cart.map(item => {
+                        const unitForeign  = toForeign(item.price);
+                        const totalForeign = toForeign(item.price * item.qty);
+                        return (
+                          <tr key={item.productId}>
+                            <td style={{ fontWeight: 500 }}>{item.name}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input type="number" min={1} value={item.qty}
+                                onChange={e => updateQty(item.productId, parseInt(e.target.value) || 1)}
+                                style={{ width: 65, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, background: 'var(--bg)', color: 'var(--text-1)', textAlign: 'center' }} />
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <input type="number" min={0}
+                                value={currency === 'TRY' ? item.price : parseFloat(unitForeign.toFixed(4))}
+                                onChange={e => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  updatePrice(item.productId, currency === 'TRY' ? val : val * rate);
+                                }}
+                                style={{ width: 100, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, background: 'var(--bg)', color: 'var(--text-1)', textAlign: 'right' }} />
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: '#E85D04' }}>
+                              {sym}{totalForeign.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                              <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400 }}>
+                                {item.qty} × {sym}{unitForeign.toFixed(2)}
+                              </div>
+                            </td>
+                            <td>
+                              <button onClick={() => removeFromCart(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}>
+                                <IconTrash size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
                 {/* Mobil kart listesi */}
                 <div className="mob-card-list" style={{ padding: 10 }}>
-                  {cart.map(item => (
-                    <div key={item.productId} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)', flex: 1, paddingRight: 8 }}>{item.name}</span>
-                        <button onClick={() => removeFromCart(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', flexShrink: 0 }}>
-                          <IconTrash size={15} />
-                        </button>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3 }}>ADET</div>
-                          <input type="number" min={1} value={item.qty} onChange={e => updateQty(item.productId, parseInt(e.target.value) || 1)}
-                            className="form-input" style={{ padding: '6px 10px', fontSize: 14 }} />
+                  {cart.map(item => {
+                    const unitForeign  = toForeign(item.price);
+                    const totalForeign = toForeign(item.price * item.qty);
+                    return (
+                      <div key={item.productId} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                          <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)', flex: 1, paddingRight: 8 }}>{item.name}</span>
+                          <button onClick={() => removeFromCart(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', flexShrink: 0 }}>
+                            <IconTrash size={15} />
+                          </button>
                         </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3 }}>BİRİM FİYAT (₺)</div>
-                          <input type="number" min={0} value={item.price} onChange={e => updatePrice(item.productId, parseFloat(e.target.value) || 0)}
-                            className="form-input" style={{ padding: '6px 10px', fontSize: 14 }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3 }}>ADET</div>
+                            <input type="number" min={1} value={item.qty} onChange={e => updateQty(item.productId, parseInt(e.target.value) || 1)}
+                              className="form-input" style={{ padding: '6px 10px', fontSize: 14, textAlign: 'center' }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3 }}>BİRİM ({sym})</div>
+                            <input type="number" min={0}
+                              value={currency === 'TRY' ? item.price : parseFloat(unitForeign.toFixed(4))}
+                              onChange={e => {
+                                const val = parseFloat(e.target.value) || 0;
+                                updatePrice(item.productId, currency === 'TRY' ? val : val * rate);
+                              }}
+                              className="form-input" style={{ padding: '6px 10px', fontSize: 14, textAlign: 'right' }} />
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                            {item.qty} × {sym}{unitForeign.toFixed(2)}
+                          </span>
+                          <span style={{ fontWeight: 700, color: '#E85D04', fontSize: 14 }}>
+                            = {sym}{totalForeign.toFixed(2)}
+                          </span>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right', marginTop: 8, fontWeight: 700, color: '#E85D04', fontSize: 14 }}>
-                        Toplam: ₺{(item.price * item.qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -466,9 +536,19 @@ export default function SalesPage() {
                 )}
               </label>
               <div style={{ textAlign: 'right', fontSize: 13 }}>
-                {discountRate > 0 && <div style={{ color: '#888' }}>Ara toplam: ₺{subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>}
-                {discountRate > 0 && <div style={{ color: '#16A34A' }}>İskonto: -₺{discountAmt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>}
-                <div style={{ fontWeight: 800, fontSize: 18 }}>Toplam: ₺{total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                {discountRate > 0 && (
+                  <div style={{ color: '#888' }}>
+                    Ara toplam: {sym}{toForeign(subtotal).toFixed(2)}
+                    {currency !== 'TRY' && <span style={{ fontSize: 11, color: 'var(--text-3)' }}> (₺{subtotal.toFixed(2)})</span>}
+                  </div>
+                )}
+                {discountRate > 0 && (
+                  <div style={{ color: '#16A34A' }}>İskonto (%{discountRate}): -{sym}{toForeign(discountAmt).toFixed(2)}</div>
+                )}
+                <div style={{ fontWeight: 800, fontSize: 18 }}>
+                  {sym}{toForeign(total).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  {currency !== 'TRY' && <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 400, marginLeft: 6 }}>≈ ₺{total.toFixed(2)}</span>}
+                </div>
                 <div style={{ fontSize: 11, color: profit >= 0 ? '#16A34A' : '#DC2626' }}>Kâr: ₺{profit.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
               </div>
             </div>
