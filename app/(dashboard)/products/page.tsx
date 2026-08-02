@@ -10,6 +10,7 @@ import {
   IconDownload, IconScan, IconCopy, IconUpload, IconTemplate,
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
+import { useRates } from '@/hooks/useRates';
 
 const empty: Omit<Product, 'id'> = {
   name: '', code: '', barcode: '', cost: 0, list: 0, stock: 0, photo: '', catName: '',
@@ -82,6 +83,15 @@ export default function ProductsPage() {
   const [importing, setImporting] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const { rates } = useRates();
+  const usdRate = rates.USD || 1;
+
+  // Ürünün TL maliyetini hesapla (costUsd varsa kur ile çevir)
+  function effectiveCost(p: Product): number {
+    if (p.cost && p.cost > 0) return p.cost;
+    if (p.costUsd && p.costUsd > 0) return p.costUsd * usdRate;
+    return 0;
+  }
 
   useEffect(() => { load(); loadCats(); }, []);
 
@@ -447,7 +457,16 @@ export default function ProductsPage() {
                       <td>{p.code ? <code style={{ background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 4, fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{p.code}</code> : <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                       <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{p.barcode || '—'}</td>
                       <td>{p.catName ? <span className="badge badge-blue">{p.catName}</span> : '—'}</td>
-                      <td>₺{(p.cost ?? 0).toLocaleString('tr-TR')}</td>
+                      <td>
+                        {p.costUsd && p.costUsd > 0 ? (
+                          <span title={`$${p.costUsd} × ${usdRate.toFixed(2)} kur`}>
+                            ₺{effectiveCost(p).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                            <span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 4 }}>(${p.costUsd})</span>
+                          </span>
+                        ) : (
+                          <span>₺{(p.cost ?? 0).toLocaleString('tr-TR')}</span>
+                        )}
+                      </td>
                       <td style={{ fontWeight: 700 }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</td>
                       <td><span style={{ fontWeight: 700, color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</span></td>
                       <td>
@@ -483,6 +502,12 @@ export default function ProductsPage() {
                     {p.catName && <span className="badge badge-blue" style={{ fontSize: 10 }}>{p.catName}</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 12 }}>
+                    <span style={{ color: 'var(--text-3)' }}>
+                      Maliyet: <strong style={{ color: 'var(--text-1)' }}>
+                        ₺{effectiveCost(p).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                        {p.costUsd && p.costUsd > 0 && <span style={{ color: 'var(--text-3)', fontWeight: 400 }}> (${p.costUsd})</span>}
+                      </strong>
+                    </span>
                     <span style={{ color: 'var(--text-3)' }}>Liste: <strong style={{ color: 'var(--text-1)' }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</strong></span>
                     <span style={{ color: 'var(--text-3)' }}>Stok: <strong style={{ color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</strong></span>
                   </div>
@@ -653,8 +678,7 @@ export default function ProductsPage() {
                       setForm(f => ({
                         ...f,
                         cost,
-                        // Liste fiyatı manuel değilse otomatik güncelle
-                        list: listManual ? f.list : recommendedList(cost),
+                        list: listManual ? f.list : recommendedList(cost || (f.costUsd ? f.costUsd * usdRate : 0)),
                       }));
                     }}
                   />
