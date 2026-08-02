@@ -11,7 +11,8 @@ import {
   IconLayoutDashboard, IconPackage, IconStack2,
   IconReceipt, IconFileText, IconTag, IconUsers,
   IconSettings, IconLogout, IconMenu2,
-  IconChevronLeft, IconClipboardList, IconBuildingFactory2
+  IconChevronLeft, IconClipboardList, IconBuildingFactory2,
+  IconSun, IconMoon,
 } from '@tabler/icons-react';
 
 const ALL_NAV = [
@@ -33,13 +34,25 @@ export default function Sidebar() {
   const { rates, updatedAt } = useRates();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
     const saved = localStorage.getItem('sb-collapsed');
     const isCollapsed = saved === '1';
     if (isCollapsed) setCollapsed(true);
     document.documentElement.style.setProperty('--sidebar-current-w', isCollapsed ? '60px' : '240px');
+
+    const savedTheme = (localStorage.getItem('app-theme') as 'dark' | 'light') || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.setAttribute('data-theme', savedTheme);
   }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('app-theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  };
 
   const toggle = () => {
     const next = !collapsed;
@@ -64,7 +77,7 @@ export default function Sidebar() {
       <div className="sidebar-brand" style={collapsed ? { justifyContent: 'center', padding: '12px 0' } : undefined}>
         {!collapsed && (
           <div style={{
-            background: '#fff', borderRadius: 8, padding: '5px 10px',
+            background: 'var(--logo-wrap-bg)', borderRadius: 8, padding: '5px 10px',
             flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
           }}>
             <img
@@ -117,13 +130,30 @@ export default function Sidebar() {
               <div className="sidebar-user-row">
                 <div className="user-av">{initials}</div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
                 </div>
               </div>
             </div>
           </>
         )}
+        {/* Tema toggle */}
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Aydınlık Mod' : 'Karanlık Mod'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '9px 14px', margin: '0 8px 4px',
+            background: theme === 'light' ? 'rgba(232,93,4,.12)' : 'var(--alpha-7)',
+            color: theme === 'light' ? 'var(--or)' : 'var(--text-2)',
+            border: `1px solid ${theme === 'light' ? 'rgba(232,93,4,.3)' : 'var(--border-2)'}`,
+            borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            width: 'calc(100% - 16px)',
+          }}
+        >
+          {theme === 'dark' ? <IconSun size={16} /> : <IconMoon size={16} />}
+          {!collapsed && <span>{theme === 'dark' ? 'Aydınlık Mod' : 'Karanlık Mod'}</span>}
+        </button>
         <button className="sidebar-logout-btn" onClick={handleLogout}>
           <IconLogout size={16} />
           {!collapsed && <span>Çıkış Yap</span>}

@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import type { Product, Category } from '@/types';
 import {
   IconPlus, IconSearch, IconEdit, IconTrash, IconPhoto, IconCamera, IconX, IconRefresh,
-  IconDownload, IconScan, IconCopy,
+  IconDownload, IconScan, IconCopy, IconUpload, IconTemplate,
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 
@@ -79,7 +79,9 @@ export default function ProductsPage() {
   const [barcodeError, setBarcodeError] = useState('');
   const [fabOpen, setFabOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const [importing, setImporting] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); loadCats(); }, []);
 
@@ -140,6 +142,87 @@ export default function ProductsPage() {
     a.download = `urunler_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function downloadTemplate() {
+    const headers = ['Ürün Adı *', 'Kategori', 'Stok Kodu', 'Barkod (EAN-13)', 'Maliyet (₺)', 'Liste Fiyatı (₺)', 'Stok Adedi'];
+    const example = ['"Sırt Çantası M"', '"Çanta"', '', '', '150', '0', '10'];
+    const csv = '﻿' + [headers, example].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'urun_iceri_aktar_taslak.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { showToast('⚠️ Dosyada veri satırı bulunamadı'); return; }
+
+      // parse CSV respecting quoted fields
+      function parseRow(line: string): string[] {
+        const result: string[] = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') { inQ = !inQ; }
+          else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+          else { cur += ch; }
+        }
+        result.push(cur.trim());
+        return result;
+      }
+
+      const dataLines = lines.slice(1); // skip header
+      let added = 0, skipped = 0;
+      const currentProducts = [...products];
+
+      for (const line of dataLines) {
+        if (!line.trim()) continue;
+        const cols = parseRow(line);
+        const name = cols[0]?.replace(/^"|"$/g, '').trim();
+        if (!name) { skipped++; continue; }
+
+        const catName = cols[1]?.replace(/^"|"$/g, '').trim() || '';
+        let code = cols[2]?.replace(/^"|"$/g, '').trim() || '';
+        let barcode = cols[3]?.replace(/^"|"$/g, '').trim() || '';
+        const cost = parseFloat(cols[4] || '0') || 0;
+        const listRaw = parseFloat(cols[5] || '0');
+        const list = listRaw > 0 ? listRaw : recommendedList(cost);
+        const stock = parseInt(cols[6] || '0') || 0;
+
+        // Auto-generate barcode if missing or duplicate
+        if (!barcode || currentProducts.some(p => p.barcode === barcode)) {
+          barcode = generateBarcode(currentProducts);
+        }
+        // Auto-generate code if missing
+        if (!code && catName) {
+          const cat = categories.find(c => c.name === catName);
+          if (cat?.prefix) code = generateCode(cat.prefix, currentProducts, catName);
+        }
+
+        const newDoc = await addDoc(collection(db, 'products'), {
+          name, catName, code, barcode, cost, list, stock, photo: '', createdAt: serverTimestamp(),
+        });
+        currentProducts.push({ id: newDoc.id, name, catName, code, barcode, cost, list, stock, photo: '' });
+        added++;
+      }
+
+      await load();
+      showToast(`✅ ${added} ürün eklendi${skipped > 0 ? `, ${skipped} satır atlandı` : ''}`);
+    } catch {
+      showToast('⚠️ Dosya okunamadı, lütfen taslak formatını kullanın');
+    } finally {
+      setImporting(false);
+    }
   }
 
   function openEdit(p: Product) {
@@ -278,12 +361,25 @@ export default function ProductsPage() {
           <div className="page-title">Ürünler</div>
           <div className="page-sub">{products.length} ürün kayıtlı</div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={exportCSV} title="CSV olarak dışa aktar">
-            <IconDownload size={16} /> CSV
+            <IconDownload size={16} /> <span className="btn-label">CSV</span>
           </button>
+          <button className="btn btn-secondary" onClick={downloadTemplate} title="İçeri aktarma taslağı indir">
+            <IconTemplate size={16} /> <span className="btn-label">Taslak</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => importRef.current?.click()}
+            disabled={importing}
+            title="CSV ile içeri aktar"
+            style={{ color: 'var(--or)', borderColor: 'rgba(232,93,4,.3)' }}
+          >
+            <IconUpload size={16} /> <span className="btn-label">{importing ? 'Aktarılıyor...' : 'İçeri Aktar'}</span>
+          </button>
+          <input ref={importRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleImportCSV} />
           <button className="btn btn-primary" onClick={() => openAdd()}>
-            <IconPlus size={16} /> Yeni Ürün
+            <IconPlus size={16} /> <span className="btn-label">Yeni Ürün</span>
           </button>
         </div>
       </div>
