@@ -4,6 +4,7 @@ export interface Product {
   code: string;
   barcode: string;
   cost: number;
+  costUsd?: number;
   list: number;
   listUsd?: number;
   stock: number;

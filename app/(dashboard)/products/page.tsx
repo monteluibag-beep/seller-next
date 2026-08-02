@@ -148,7 +148,7 @@ export default function ProductsPage() {
     const headers = [
       'Ürün Adı *', 'Kategori', 'Açıklama',
       'Stok Kodu (opsiyonel)', 'Barkod EAN-13 (opsiyonel)',
-      'Maliyet (₺)', 'Liste Fiyatı (₺)', 'Liste Fiyatı ($)',
+      'Maliyet ($)', 'Liste Fiyatı (₺)', 'Liste Fiyatı ($)',
       'Stok Adedi (opsiyonel)',
     ];
     const example = ['"Sırt Çantası M"', '"Çanta"', '"Orta boy fermuarlı sırt çantası"', '', '', '150', '0', '0', ''];
@@ -200,9 +200,9 @@ export default function ProductsPage() {
         const description = cols[2]?.replace(/^"|"$/g, '').trim() || '';
         let   code        = cols[3]?.replace(/^"|"$/g, '').trim() || '';
         let   barcode     = cols[4]?.replace(/^"|"$/g, '').trim() || '';
-        const cost        = parseFloat(cols[5] || '0') || 0;
+        const costUsd     = parseFloat(cols[5] || '0') || 0;
         const listRaw     = parseFloat(cols[6] || '0');
-        const list        = listRaw > 0 ? listRaw : recommendedList(cost);
+        const list        = listRaw > 0 ? listRaw : 0;
         const listUsd     = parseFloat(cols[7] || '0') || 0;
         const stock       = parseInt(cols[8] || '0') || 0;
 
@@ -217,13 +217,14 @@ export default function ProductsPage() {
         }
 
         const payload: Record<string, unknown> = {
-          name, catName, code, barcode, cost, list, stock, photo: '', createdAt: serverTimestamp(),
+          name, catName, code, barcode, cost: 0, list, stock, photo: '', createdAt: serverTimestamp(),
         };
         if (description) payload.description = description;
+        if (costUsd > 0) payload.costUsd = costUsd;
         if (listUsd > 0) payload.listUsd = listUsd;
 
         const newDoc = await addDoc(collection(db, 'products'), payload);
-        currentProducts.push({ id: newDoc.id, name, catName, code, barcode, cost, list, listUsd, stock, photo: '', description });
+        currentProducts.push({ id: newDoc.id, name, catName, code, barcode, cost: 0, costUsd, list, listUsd, stock, photo: '', description });
         added++;
       }
 
