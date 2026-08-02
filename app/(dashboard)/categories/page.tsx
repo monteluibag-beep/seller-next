@@ -24,6 +24,7 @@ export default function CategoriesPage() {
   const [form, setForm] = useState<Omit<Category, 'id'>>(empty);
   const [saving, setSaving] = useState(false);
   const [prefixManual, setPrefixManual] = useState(false);
+  const [nameError, setNameError] = useState('');
 
   useEffect(() => { load(); }, []);
 
@@ -38,6 +39,7 @@ export default function CategoriesPage() {
     setEditing(null);
     setForm(empty);
     setPrefixManual(false);
+    setNameError('');
     setOpen(true);
   }
 
@@ -45,6 +47,7 @@ export default function CategoriesPage() {
     setEditing(c);
     setForm({ name: c.name, prefix: c.prefix, desc: c.desc });
     setPrefixManual(true);
+    setNameError('');
     setOpen(true);
   }
 
@@ -54,10 +57,19 @@ export default function CategoriesPage() {
     } else {
       setForm(f => ({ ...f, name }));
     }
+    // Duplicate kontrolü
+    const dup = categories.find(c =>
+      c.name.trim().toLowerCase() === name.trim().toLowerCase() && c.id !== editing?.id
+    );
+    setNameError(dup ? `"${dup.name}" kategorisi zaten mevcut` : '');
   }
 
   async function save() {
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || nameError) return;
+    const dup = categories.find(c =>
+      c.name.trim().toLowerCase() === form.name.trim().toLowerCase() && c.id !== editing?.id
+    );
+    if (dup) { setNameError(`"${dup.name}" kategorisi zaten mevcut`); return; }
     setSaving(true);
     try {
       if (editing?.id) {
@@ -148,7 +160,14 @@ export default function CategoriesPage() {
 
             <div className="form-group">
               <label className="form-label">Kategori Adı *</label>
-              <input className="form-input" value={form.name} onChange={e => handleNameChange(e.target.value)} placeholder="Sırt Çantaları" />
+              <input
+                className="form-input"
+                value={form.name}
+                onChange={e => handleNameChange(e.target.value)}
+                placeholder="Sırt Çantaları"
+                style={{ borderColor: nameError ? '#f87171' : undefined }}
+              />
+              {nameError && <div style={{ fontSize: 11, color: '#f87171', marginTop: 4, fontWeight: 600 }}>⚠️ {nameError}</div>}
             </div>
 
             <div className="form-group">
@@ -177,7 +196,7 @@ export default function CategoriesPage() {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => setOpen(false)}>İptal</button>
-              <button className="btn btn-primary" onClick={save} disabled={saving || !form.name.trim()}>
+              <button className="btn btn-primary" onClick={save} disabled={saving || !form.name.trim() || !!nameError}>
                 {saving ? 'Kaydediliyor...' : editing ? 'Güncelle' : 'Kaydet'}
               </button>
             </div>
