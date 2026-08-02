@@ -31,11 +31,29 @@ function generateBarcode(products: Product[]): string {
   return body + check;
 }
 
+function toAsciiPrefix(str: string): string {
+  return str
+    .toUpperCase()
+    .replace(/Ç/g, 'C').replace(/Ğ/g, 'G').replace(/İ/g, 'I')
+    .replace(/Ö/g, 'O').replace(/Ş/g, 'S').replace(/Ü/g, 'U')
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 3);
+}
+
 function generateCode(prefix: string, products: Product[], catName: string): string {
   const year = new Date().getFullYear().toString().slice(-2);
   const existing = products.filter(p =>
     p.catName === catName && p.code?.startsWith(`${prefix}-${year}-`)
   );
+  const seq = (existing.length + 1).toString().padStart(3, '0');
+  return `${prefix}-${year}-${seq}`;
+}
+
+function generateCodeFromName(name: string, products: Product[]): string {
+  const prefix = toAsciiPrefix(name);
+  if (!prefix) return '';
+  const year = new Date().getFullYear().toString().slice(-2);
+  const existing = products.filter(p => p.code?.startsWith(`${prefix}-${year}-`));
   const seq = (existing.length + 1).toString().padStart(3, '0');
   return `${prefix}-${year}-${seq}`;
 }
@@ -118,11 +136,11 @@ export default function ProductsPage() {
     (p.barcode || '').includes(search)
   );
 
-  function autoCode(catName: string) {
-    if (!catName) return '';
+  function autoCode(catName: string, productName = '') {
     const cat = categories.find(c => c.name === catName);
-    if (!cat?.prefix) return '';
-    return generateCode(cat.prefix, products, catName);
+    if (cat?.prefix) return generateCode(cat.prefix, products, catName);
+    if (productName) return generateCodeFromName(productName, products);
+    return '';
   }
 
   function openAdd(prefillBarcode?: string) {
@@ -196,7 +214,7 @@ export default function ProductsPage() {
         return result;
       }
 
-      const dataLines = lines.slice(1); // skip header
+      const dataLines = lines.filter((_, i) => i > 0); // skip header row
       let added = 0, skipped = 0;
       const currentProducts = [...products];
 
@@ -220,10 +238,14 @@ export default function ProductsPage() {
         if (!barcode || currentProducts.some(p => p.barcode === barcode)) {
           barcode = generateBarcode(currentProducts);
         }
-        // Auto-generate code if missing
-        if (!code && catName) {
+        // Auto-generate code: önce kategori prefix, yoksa ürün adının ilk 3 harfi
+        if (!code) {
           const cat = categories.find(c => c.name === catName);
-          if (cat?.prefix) code = generateCode(cat.prefix, currentProducts, catName);
+          if (cat?.prefix) {
+            code = generateCode(cat.prefix, currentProducts, catName);
+          } else {
+            code = generateCodeFromName(name, currentProducts);
+          }
         }
 
         const payload: Record<string, unknown> = {
