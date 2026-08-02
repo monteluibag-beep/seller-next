@@ -145,8 +145,13 @@ export default function ProductsPage() {
   }
 
   function downloadTemplate() {
-    const headers = ['Ürün Adı *', 'Kategori', 'Stok Kodu', 'Barkod (EAN-13)', 'Maliyet (₺)', 'Liste Fiyatı (₺)', 'Stok Adedi'];
-    const example = ['"Sırt Çantası M"', '"Çanta"', '', '', '150', '0', '10'];
+    const headers = [
+      'Ürün Adı *', 'Kategori', 'Açıklama',
+      'Stok Kodu (opsiyonel)', 'Barkod EAN-13 (opsiyonel)',
+      'Maliyet (₺)', 'Liste Fiyatı (₺)', 'Liste Fiyatı ($)',
+      'Stok Adedi (opsiyonel)',
+    ];
+    const example = ['"Sırt Çantası M"', '"Çanta"', '"Orta boy fermuarlı sırt çantası"', '', '', '150', '0', '0', ''];
     const csv = '﻿' + [headers, example].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -191,13 +196,15 @@ export default function ProductsPage() {
         const name = cols[0]?.replace(/^"|"$/g, '').trim();
         if (!name) { skipped++; continue; }
 
-        const catName = cols[1]?.replace(/^"|"$/g, '').trim() || '';
-        let code = cols[2]?.replace(/^"|"$/g, '').trim() || '';
-        let barcode = cols[3]?.replace(/^"|"$/g, '').trim() || '';
-        const cost = parseFloat(cols[4] || '0') || 0;
-        const listRaw = parseFloat(cols[5] || '0');
-        const list = listRaw > 0 ? listRaw : recommendedList(cost);
-        const stock = parseInt(cols[6] || '0') || 0;
+        const catName     = cols[1]?.replace(/^"|"$/g, '').trim() || '';
+        const description = cols[2]?.replace(/^"|"$/g, '').trim() || '';
+        let   code        = cols[3]?.replace(/^"|"$/g, '').trim() || '';
+        let   barcode     = cols[4]?.replace(/^"|"$/g, '').trim() || '';
+        const cost        = parseFloat(cols[5] || '0') || 0;
+        const listRaw     = parseFloat(cols[6] || '0');
+        const list        = listRaw > 0 ? listRaw : recommendedList(cost);
+        const listUsd     = parseFloat(cols[7] || '0') || 0;
+        const stock       = parseInt(cols[8] || '0') || 0;
 
         // Auto-generate barcode if missing or duplicate
         if (!barcode || currentProducts.some(p => p.barcode === barcode)) {
@@ -209,10 +216,14 @@ export default function ProductsPage() {
           if (cat?.prefix) code = generateCode(cat.prefix, currentProducts, catName);
         }
 
-        const newDoc = await addDoc(collection(db, 'products'), {
+        const payload: Record<string, unknown> = {
           name, catName, code, barcode, cost, list, stock, photo: '', createdAt: serverTimestamp(),
-        });
-        currentProducts.push({ id: newDoc.id, name, catName, code, barcode, cost, list, stock, photo: '' });
+        };
+        if (description) payload.description = description;
+        if (listUsd > 0) payload.listUsd = listUsd;
+
+        const newDoc = await addDoc(collection(db, 'products'), payload);
+        currentProducts.push({ id: newDoc.id, name, catName, code, barcode, cost, list, listUsd, stock, photo: '', description });
         added++;
       }
 

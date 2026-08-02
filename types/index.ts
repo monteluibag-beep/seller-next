@@ -5,9 +5,11 @@ export interface Product {
   barcode: string;
   cost: number;
   list: number;
+  listUsd?: number;
   stock: number;
   photo?: string;
   catName: string;
+  description?: string;
 }
 
 export interface SaleItem {
