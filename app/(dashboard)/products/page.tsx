@@ -11,6 +11,7 @@ import {
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useRates } from '@/hooks/useRates';
+import * as XLSX from 'xlsx';
 
 const empty: Omit<Product, 'id'> = {
   name: '', code: '', barcode: '', cost: 0, list: 0, stock: 0, photo: '', catName: '',
@@ -160,40 +161,38 @@ export default function ProductsPage() {
   }
 
   function exportCSV() {
-    const headers = ['Ürün Adı', 'Kod', 'Barkod', 'Kategori', 'Maliyet (₺)', 'Liste Fiyatı (₺)', 'Stok'];
-    const rows = filtered.map(p => [
-      `"${(p.name || '').replace(/"/g, '""')}"`,
-      `"${(p.code || '').replace(/"/g, '""')}"`,
-      `"${(p.barcode || '').replace(/"/g, '""')}"`,
-      `"${(p.catName || '').replace(/"/g, '""')}"`,
-      p.cost ?? 0, p.list ?? 0, p.stock ?? 0,
-    ]);
-    const csv = '﻿' + [headers, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `urunler_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const rows = filtered.map(p => ({
+      'Ürün Adı': p.name || '',
+      'Kod': p.code || '',
+      'Barkod': p.barcode || '',
+      'Kategori': p.catName || '',
+      'Maliyet (₺)': p.cost ?? 0,
+      'Maliyet ($)': p.costUsd ?? 0,
+      'Liste Fiyatı (₺)': p.list ?? 0,
+      'Stok': p.stock ?? 0,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ürünler');
+    XLSX.writeFile(wb, `urunler_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   function downloadTemplate() {
-    const headers = [
-      'Ürün Adı *', 'Kategori', 'Açıklama',
-      'Stok Kodu (opsiyonel)', 'Barkod EAN-13 (opsiyonel)',
-      'Maliyet ($)', 'Liste Fiyatı (₺)', 'Liste Fiyatı ($)',
-      'Stok Adedi (opsiyonel)',
-    ];
-    const example = ['"Sırt Çantası M"', '"Çanta"', '"Orta boy fermuarlı sırt çantası"', '', '', '150', '0', '0', ''];
-    const csv = '﻿' + [headers, example].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'urun_iceri_aktar_taslak.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const example = [{
+      'Ürün Adı *': 'Sırt Çantası M',
+      'Kategori': 'Çanta',
+      'Açıklama': 'Orta boy fermuarlı sırt çantası',
+      'Stok Kodu (opsiyonel)': '',
+      'Barkod EAN-13 (opsiyonel)': '',
+      'Maliyet ($)': 150,
+      'Liste Fiyatı (₺)': 0,
+      'Liste Fiyatı ($)': 0,
+      'Stok Adedi (opsiyonel)': '',
+    }];
+    const ws = XLSX.utils.json_to_sheet(example);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ürünler');
+    XLSX.writeFile(wb, 'urun_iceri_aktar_taslak.xlsx');
   }
 
   async function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
@@ -202,64 +201,34 @@ export default function ProductsPage() {
     e.target.value = '';
     setImporting(true);
     try {
-      const text = await file.text();
-      const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { showToast('⚠️ Dosyada veri satırı bulunamadı'); return; }
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const jsonRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
 
-      // parse CSV respecting quoted fields
-      function parseRow(line: string): string[] {
-        const result: string[] = [];
-        let cur = '', inQ = false;
-        for (let i = 0; i < line.length; i++) {
-          const ch = line[i];
-          if (ch === '"') { inQ = !inQ; }
-          else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
-          else { cur += ch; }
-        }
-        result.push(cur.trim());
-        return result;
+      if (jsonRows.length === 0) { showToast('⚠️ Dosyada veri satırı bulunamadı'); return; }
+
+      function getCol(row: Record<string, unknown>, keyword: string): string {
+        const key = Object.keys(row).find(k => k.toLowerCase().includes(keyword.toLowerCase()));
+        return key ? String(row[key] ?? '').trim() : '';
       }
 
-      // Header satırından sütun indekslerini tespit et
-      const headerCols = parseRow(lines[0]).map(h => h.replace(/^"|"$/g, '').toLowerCase().trim());
-      function colIdx(keywords: string[]): number {
-        return headerCols.findIndex(h => keywords.every(k => h.includes(k)));
-      }
-      const CI = {
-        name:    colIdx(['ad']) !== -1 ? colIdx(['ad']) : 0,
-        cat:     colIdx(['kategori']),
-        desc:    colIdx(['açıklama']),
-        code:    colIdx(['stok kodu']) !== -1 ? colIdx(['stok kodu']) : colIdx(['kod']),
-        barcode: colIdx(['barkod']),
-        cost:    colIdx(['maliyet']),
-        list:    colIdx(['liste', '₺']) !== -1 ? colIdx(['liste', '₺']) : colIdx(['liste fiyatı']),
-        listUsd: colIdx(['liste', '$']) !== -1 ? colIdx(['liste', '$']) : -1,
-        stock:   colIdx(['stok adedi']) !== -1 ? colIdx(['stok adedi']) : colIdx(['stok']),
-      };
-
-      const get = (cols: string[], idx: number) =>
-        idx >= 0 ? (cols[idx] ?? '').replace(/^"|"$/g, '').trim() : '';
-
-      const dataLines = lines.filter((_, i) => i > 0); // skip header row
       let added = 0, skipped = 0;
       const currentProducts = [...products];
 
-      for (const line of dataLines) {
-        if (!line.trim()) continue;
-        const cols = parseRow(line);
-        const name = get(cols, CI.name);
+      for (const row of jsonRows) {
+        const name = getCol(row, 'ürün adı') || getCol(row, 'ad');
         if (!name) { skipped++; continue; }
 
-        const catName     = get(cols, CI.cat);
-        const description = get(cols, CI.desc);
-        let   code        = get(cols, CI.code);
-        let   barcode     = get(cols, CI.barcode);
-        const costUsd     = parseFloat(get(cols, CI.cost) || '0') || 0;
-        const listRaw     = parseFloat(get(cols, CI.list) || '0');
-        // Liste fiyatı boşsa maliyet üzerinden otomatik hesapla
+        const catName     = getCol(row, 'kategori');
+        const description = getCol(row, 'açıklama');
+        let   code        = getCol(row, 'stok kodu') || getCol(row, 'kod');
+        let   barcode     = getCol(row, 'barkod');
+        const costUsd     = parseFloat(getCol(row, 'maliyet ($)') || getCol(row, 'maliyet') || '0') || 0;
+        const listRaw     = parseFloat(getCol(row, 'liste fiyatı (₺)') || getCol(row, 'liste') || '0');
         const list        = listRaw > 0 ? listRaw : recommendedList(costUsd * usdRate);
-        const listUsd     = parseFloat(get(cols, CI.listUsd) || '0') || 0;
-        const stock       = parseInt(get(cols, CI.stock) || '0') || 0;
+        const listUsd     = parseFloat(getCol(row, 'liste fiyatı ($)') || '0') || 0;
+        const stock       = parseInt(getCol(row, 'stok') || '0') || 0;
 
         // Auto-generate barcode if missing or duplicate
         if (!barcode || currentProducts.some(p => p.barcode === barcode)) {
@@ -500,8 +469,8 @@ export default function ProductsPage() {
           <div className="page-sub">{products.length} ürün kayıtlı{someSelected && ` · ${selected.size} seçili`}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn btn-secondary" onClick={exportCSV} title="CSV olarak dışa aktar">
-            <IconDownload size={16} /> <span className="btn-label">CSV</span>
+          <button className="btn btn-secondary" onClick={exportCSV} title="Excel olarak dışa aktar">
+            <IconDownload size={16} /> <span className="btn-label">Excel</span>
           </button>
           <button className="btn btn-secondary" onClick={downloadTemplate} title="İçeri aktarma taslağı indir">
             <IconTemplate size={16} /> <span className="btn-label">Taslak</span>
@@ -510,12 +479,12 @@ export default function ProductsPage() {
             className="btn btn-secondary"
             onClick={() => importRef.current?.click()}
             disabled={importing}
-            title="CSV ile içeri aktar"
+            title="Excel ile içeri aktar"
             style={{ color: 'var(--or)', borderColor: 'rgba(232,93,4,.3)' }}
           >
             <IconUpload size={16} /> <span className="btn-label">{importing ? 'Aktarılıyor...' : 'İçeri Aktar'}</span>
           </button>
-          <input ref={importRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleImportCSV} />
+          <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportCSV} />
           <button className="btn btn-primary" onClick={() => openAdd()}>
             <IconPlus size={16} /> <span className="btn-label">Yeni Ürün</span>
           </button>

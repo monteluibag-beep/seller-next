@@ -187,30 +187,25 @@ export default function StockPage() {
     XLSX.writeFile(wb, `stok_guncelleme_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
-  // ── CSV Export (movements) ──────────────────────────────────────────────────
+  // ── Excel Export (movements) ────────────────────────────────────────────────
   function exportCSV() {
-    const headers = ['Ürün Kodu', 'Barkod', 'Ürün Adı', 'Tip (giris/cikis)', 'Adet', 'Not', 'Tarih'];
     const rows = filtered.map(m => {
       const prod = products.find(p => p.id === m.productId);
       const dateVal = (m.date as { toDate?: () => Date })?.toDate?.() ?? new Date(m.date as string);
-      return [
-        `"${(prod?.code || '').replace(/"/g, '""')}"`,
-        `"${(prod?.barcode || '').replace(/"/g, '""')}"`,
-        `"${(m.productName || '').replace(/"/g, '""')}"`,
-        m.type === 'in' ? 'giris' : 'cikis',
-        m.qty,
-        `"${(m.note || '').replace(/"/g, '""')}"`,
-        dateVal ? dateVal.toLocaleDateString('tr-TR') : '',
-      ];
+      return {
+        'Ürün Kodu': prod?.code || '',
+        'Barkod': prod?.barcode || '',
+        'Ürün Adı': m.productName || '',
+        'Tip': m.type === 'in' ? 'giris' : 'cikis',
+        'Adet': m.qty,
+        'Not': m.note || '',
+        'Tarih': dateVal ? dateVal.toLocaleDateString('tr-TR') : '',
+      };
     });
-    const csv = '﻿' + [headers, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `stok_hareketleri_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wbOut = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wbOut, ws, 'Hareketler');
+    XLSX.writeFile(wbOut, `stok_hareketleri_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   // ── Excel/CSV Import ────────────────────────────────────────────────────────
@@ -385,8 +380,8 @@ export default function StockPage() {
           <div className="page-sub">{moves.length} hareket kaydı</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary" onClick={exportCSV} title="Hareketleri CSV olarak dışa aktar">
-            <IconDownload size={16} /> CSV
+          <button className="btn btn-secondary" onClick={exportCSV} title="Hareketleri Excel olarak dışa aktar">
+            <IconDownload size={16} /> Excel
           </button>
           <button className="btn btn-secondary" onClick={() => { setImportRows([]); setImportOpen(true); setImportDone(false); }} title="Excel ile toplu stok güncelle">
             <IconUpload size={16} /> İçe Aktar
@@ -710,8 +705,8 @@ export default function StockPage() {
                 </div>
 
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>Excel (.xlsx) veya CSV dosyası yükleyin:</div>
-                  <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,text/csv" style={{ display: 'none' }} onChange={handleFileChange} />
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>Excel (.xlsx) dosyası yükleyin:</div>
+                  <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleFileChange} />
                   <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => fileRef.current?.click()}>
                     <IconUpload size={16} /> Dosya Seç &amp; Önizle
                   </button>
