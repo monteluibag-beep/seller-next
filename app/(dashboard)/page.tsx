@@ -148,20 +148,15 @@ function PriceModal({ products, onClose }: { products: Product[]; onClose: () =>
                   onMouseDown={() => pick(p)}
                   style={{
                     padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>
-                      <code style={{ background: 'var(--surface-2)', padding: '1px 5px', borderRadius: 3 }}>{p.code}</code>
-                      <span style={{ marginLeft: 6 }}>{p.catName}</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#E85D04', flexShrink: 0, marginLeft: 8 }}>
-                    ₺{p.list.toLocaleString('tr-TR')}
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.3 }}>{p.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <code style={{ background: 'var(--surface-2)', padding: '1px 5px', borderRadius: 3 }}>{p.code}</code>
+                    <span>{p.catName}</span>
+                    <span style={{ fontWeight: 700, color: '#E85D04' }}>₺{p.list.toLocaleString('tr-TR')}</span>
                   </div>
                 </div>
               ))}
