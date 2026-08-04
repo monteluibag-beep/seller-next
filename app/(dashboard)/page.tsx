@@ -138,28 +138,41 @@ function PriceModal({ products, onClose }: { products: Product[]; onClose: () =>
           </div>
           {dropOpen && filtered.length > 0 && (
             <div style={{
-              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-              background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10,
-              marginTop: 4, maxHeight: 240, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,.15)',
+              position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 100,
+              background: 'var(--surface)',
+              border: '1.5px solid var(--border-2)',
+              borderRadius: 12,
+              maxHeight: 280, overflowY: 'auto',
+              boxShadow: '0 16px 48px rgba(0,0,0,.32), 0 4px 12px rgba(0,0,0,.16)',
+              overflow: 'hidden',
             }}>
-              {filtered.map(p => (
-                <div
-                  key={p.id}
-                  onMouseDown={() => pick(p)}
-                  style={{
-                    padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.3 }}>{p.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <code style={{ background: 'var(--surface-2)', padding: '1px 5px', borderRadius: 3 }}>{p.code}</code>
-                    <span>{p.catName}</span>
-                    <span style={{ fontWeight: 700, color: '#E85D04' }}>₺{p.list.toLocaleString('tr-TR')}</span>
+              <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: .5 }}>
+                  {filtered.length} sonuç
+                </span>
+              </div>
+              <div style={{ overflowY: 'auto', maxHeight: 240 }}>
+                {filtered.map((p, idx) => (
+                  <div
+                    key={p.id}
+                    onMouseDown={() => pick(p)}
+                    style={{
+                      padding: '11px 14px', cursor: 'pointer',
+                      borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
+                      transition: 'background .1s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,93,4,.07)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.4 }}>{p.name}</div>
+                    <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--surface-2)', color: 'var(--text-2)', padding: '2px 7px', borderRadius: 5, letterSpacing: .3 }}>{p.code}</span>
+                      {p.catName && <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{p.catName}</span>}
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#E85D04', marginLeft: 'auto' }}>₺{p.list.toLocaleString('tr-TR')}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
           {search.length >= 1 && filtered.length === 0 && !selected && (
