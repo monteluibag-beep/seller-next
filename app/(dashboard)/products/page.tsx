@@ -89,6 +89,7 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState<string>(''); // '' = Tümü
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<Omit<Product, 'id'>>(empty);
@@ -142,11 +143,17 @@ export default function ProductsPage() {
     setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
   }
 
-  const filtered = products.filter(p =>
-    (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (p.code || '').toLowerCase().includes(search.toLowerCase()) ||
-    (p.barcode || '').includes(search)
-  );
+  const filtered = products.filter(p => {
+    if (catFilter && p.catName !== catFilter) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (p.name || '').toLowerCase().includes(q) ||
+           (p.code || '').toLowerCase().includes(q) ||
+           (p.barcode || '').includes(search);
+  });
+
+  // Kategorileri ürünlerde kullanılma sırasına göre listele
+  const usedCatNames = [...new Set(products.map(p => p.catName).filter(Boolean))];
 
   function autoCode(catName: string, productName = '') {
     const cat = categories.find(c => c.name === catName);
@@ -593,6 +600,40 @@ export default function ProductsPage() {
               </button>
             </div>
           </div>
+
+          {/* Kategori filtre sekmeleri */}
+          {usedCatNames.length > 1 && (
+            <div style={{ padding: '0 16px 12px', display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
+              <button
+                onClick={() => setCatFilter('')}
+                style={{
+                  padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                  background: catFilter === '' ? 'var(--or)' : 'var(--surface-2)',
+                  color: catFilter === '' ? '#fff' : 'var(--text-2)',
+                }}
+              >
+                Tümü <span style={{ opacity: .7 }}>({products.length})</span>
+              </button>
+              {usedCatNames.map(cat => {
+                const count = products.filter(p => p.catName === cat).length;
+                const active = catFilter === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setCatFilter(active ? '' : cat!)}
+                    style={{
+                      padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                      background: active ? 'var(--or)' : 'var(--surface-2)',
+                      color: active ? '#fff' : 'var(--text-2)',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    {cat} <span style={{ opacity: .7 }}>({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Desktop table */}
           <div className="table-wrap mob-hide-table">

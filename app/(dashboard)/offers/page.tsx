@@ -46,6 +46,7 @@ export default function OffersPage() {
   const [items, setItems] = useState<OfferItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [catAddMode, setCatAddMode] = useState(false); // kategori ile toplu ekleme modu
   const [saving, setSaving] = useState(false);
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   // PDF preview modal
@@ -139,6 +140,12 @@ export default function OffersPage() {
     });
     setProductSearch('');
     setSearchFocused(false);
+  }
+
+  function addByCategory(catName: string) {
+    const catProducts = products.filter(p => p.catName === catName);
+    for (const p of catProducts) addItem(p);
+    setCatAddMode(false);
   }
 
   function removeItem(pid: string) { setItems(c => c.filter(i => i.productId !== pid)); }
@@ -493,7 +500,64 @@ export default function OffersPage() {
 
             {/* Product search */}
             <div className="form-group" ref={searchRef}>
-              <label className="form-label">Ürün Ekle</label>
+              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Ürün Ekle</span>
+                <button
+                  type="button"
+                  onClick={() => { setCatAddMode(m => !m); setProductSearch(''); setSearchFocused(false); }}
+                  style={{
+                    fontSize: 11, fontWeight: 600, padding: '2px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    background: catAddMode ? 'var(--or)' : 'var(--surface-2)',
+                    color: catAddMode ? '#fff' : 'var(--text-2)',
+                  }}
+                >
+                  {catAddMode ? '✕ Kategoriden Ekle' : '+ Kategoriden Ekle'}
+                </button>
+              </label>
+
+              {catAddMode ? (
+                /* Kategori listesi */
+                (() => {
+                  const cats = [...new Set(products.map(p => p.catName).filter(Boolean))];
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {cats.map(cat => {
+                        const catProds = products.filter(p => p.catName === cat);
+                        const alreadyIn = catProds.filter(p => items.some(i => i.productId === p.id)).length;
+                        return (
+                          <div
+                            key={cat}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
+                              background: 'var(--surface-2)', border: '1px solid var(--border)',
+                              transition: 'background .1s',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,93,4,.07)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>{cat}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                                {catProds.length} ürün{alreadyIn > 0 ? ` · ${alreadyIn} zaten ekli` : ''}
+                              </div>
+                            </div>
+                            <button
+                              onMouseDown={() => addByCategory(cat!)}
+                              style={{
+                                padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                                background: 'var(--or)', color: '#fff', fontSize: 12, fontWeight: 700,
+                              }}
+                            >
+                              + Tümünü Ekle
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
+              ) : (
               <div style={{ position: 'relative' }}>
                 <IconSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', zIndex: 1 }} />
                 <input
@@ -552,6 +616,7 @@ export default function OffersPage() {
                   </div>
                 )}
               </div>
+              )}
             </div>
 
             {/* Items table */}
