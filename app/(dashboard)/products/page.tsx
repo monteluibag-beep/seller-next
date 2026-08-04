@@ -14,7 +14,7 @@ import { useRates } from '@/hooks/useRates';
 import * as XLSX from 'xlsx';
 
 const empty: Omit<Product, 'id'> = {
-  name: '', code: '', barcode: '', cost: 0, list: 0, stock: 0, photo: '', catName: '',
+  name: '', code: '', barcode: '', cost: 0, costUsd: 0, list: 0, stock: 0, photo: '', catName: '',
 };
 
 function generateBarcode(products: Product[]): string {
@@ -326,11 +326,11 @@ export default function ProductsPage() {
     setBarcodeError('');
     setForm({
       name: p.name || '', code: p.code || '', barcode: p.barcode || '',
-      cost: p.cost ?? 0, list: p.list ?? 0, stock: p.stock ?? 0,
+      cost: p.cost ?? 0, costUsd: p.costUsd ?? 0, list: p.list ?? 0, stock: p.stock ?? 0,
       photo: p.photo || '', catName: p.catName || '',
     });
     setCodeManual(true);
-    setListManual(true); // düzenleme modunda liste fiyatı mevcut değeri koru
+    setListManual(true);
     setOpen(true);
   }
 
@@ -341,7 +341,7 @@ export default function ProductsPage() {
     const newCode = p.catName ? autoCode(p.catName) : '';
     setForm({
       name: p.name || '', code: newCode, barcode: newBarcode,
-      cost: p.cost ?? 0, list: p.list ?? 0, stock: 0,
+      cost: p.cost ?? 0, costUsd: p.costUsd ?? 0, list: p.list ?? 0, stock: 0,
       photo: p.photo || '', catName: p.catName || '',
     });
     setCodeManual(!newCode);
@@ -843,9 +843,37 @@ export default function ProductsPage() {
               {/* Fiyat + Stok */}
               <div className="form-row-3">
                 <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ color: 'var(--or)', fontWeight: 700 }}>Maliyet ($)</span>
+                    <span style={{ fontSize: 10, background: 'var(--or-tint)', color: 'var(--or)', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Birincil</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-input" inputMode="decimal"
+                      value={form.costUsd || ''} onFocus={selectAll}
+                      placeholder="0"
+                      style={{ paddingRight: 30, borderColor: form.costUsd ? 'rgba(232,93,4,.4)' : undefined }}
+                      onChange={e => {
+                        const costUsd = parseFloat(e.target.value.replace(',', '.')) || 0;
+                        setForm(f => ({
+                          ...f,
+                          costUsd,
+                          list: listManual ? f.list : recommendedList(costUsd * usdRate || f.cost),
+                        }));
+                      }}
+                    />
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>$</span>
+                  </div>
+                  {(form.costUsd ?? 0) > 0 && (
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>
+                      ≈ ₺{(form.costUsd! * usdRate).toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · kur {usdRate.toFixed(2)}
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
                   <label className="form-label">Maliyet (₺)</label>
                   <input
-                    className="form-input" inputMode="decimal" min={0}
+                    className="form-input" inputMode="decimal"
                     value={form.cost || ''} onFocus={selectAll}
                     placeholder="0"
                     onChange={e => {
@@ -861,10 +889,14 @@ export default function ProductsPage() {
                 <div className="form-group">
                   <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>Liste Fiyatı (₺)</span>
-                    {form.cost > 0 && (
+                    {((form.costUsd ?? 0) > 0 || form.cost > 0) && (
                       <button
                         type="button"
-                        onClick={() => { setForm(f => ({ ...f, list: recommendedList(f.cost) })); setListManual(false); }}
+                        onClick={() => {
+                          const base = (form.costUsd ?? 0) > 0 ? form.costUsd! * usdRate : form.cost;
+                          setForm(f => ({ ...f, list: recommendedList(base) }));
+                          setListManual(false);
+                        }}
                         title="Tavsiye fiyatına sıfırla"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--or)', display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, padding: 0 }}
                       >
@@ -873,21 +905,29 @@ export default function ProductsPage() {
                     )}
                   </label>
                   <input
-                    className="form-input" inputMode="decimal" min={0}
+                    className="form-input" inputMode="decimal"
                     value={form.list || ''} onFocus={selectAll}
                     placeholder="0"
                     onChange={e => { setListManual(true); set('list', parseFloat(e.target.value.replace(',', '.')) || 0); }}
-                    style={{ borderColor: !listManual && form.cost > 0 ? 'rgba(232,93,4,.4)' : undefined, background: !listManual && form.cost > 0 ? 'rgba(232,93,4,.04)' : undefined }}
+                    style={{
+                      borderColor: !listManual && ((form.costUsd ?? 0) > 0 || form.cost > 0) ? 'rgba(232,93,4,.4)' : undefined,
+                      background: !listManual && ((form.costUsd ?? 0) > 0 || form.cost > 0) ? 'rgba(232,93,4,.04)' : undefined,
+                    }}
                   />
-                  {form.cost > 0 && (
-                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, lineHeight: 1.4 }}>
-                      {listManual
-                        ? `Tavsiye: ₺${recommendedList(form.cost).toLocaleString('tr-TR')} · 1000 adette %${MIN_MARGIN} kâr`
-                        : `1000 adette %${MIN_MARGIN} kâr güvenceli (${MAX_DISCOUNT}% iskonto sonrası ₺${(form.list * (1 - MAX_DISCOUNT / 100)).toFixed(2)})`
-                      }
-                    </div>
-                  )}
+                  {(() => {
+                    const base = (form.costUsd ?? 0) > 0 ? form.costUsd! * usdRate : form.cost;
+                    return base > 0 ? (
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, lineHeight: 1.4 }}>
+                        {listManual
+                          ? `Tavsiye: ₺${recommendedList(base).toLocaleString('tr-TR')} · %${MIN_MARGIN} kâr`
+                          : `%${MIN_MARGIN} kâr · %${MAX_DISCOUNT} iskonto sonrası ₺${(form.list * (1 - MAX_DISCOUNT / 100)).toFixed(0)}`
+                        }
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
+              </div>
+              <div className="form-row-3" style={{ marginTop: 0 }}>
                 <div className="form-group">
                   <label className="form-label">Stok Adedi</label>
                   <input className="form-input" type="number" min={0} value={form.stock} onFocus={selectAll} onChange={e => set('stock', parseInt(e.target.value) || 0)} />
