@@ -1,12 +1,12 @@
 'use client';
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, IconX } from '@tabler/icons-react';
+import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, IconX, IconSearch, IconTag } from '@tabler/icons-react';
 import Link from 'next/link';
-import { collection, getDocs, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Product, Sale, Offer } from '@/types';
+import type { Product, Sale, Offer, DiscountTier } from '@/types';
 import { useRates } from '@/hooks/useRates';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -47,6 +47,249 @@ interface Stats {
   monthlyData: MonthData[];
   thisYearTotal: number;
   lastYearTotal: number;
+}
+
+const DEFAULT_DISCOUNTS: DiscountTier[] = [
+  { qty: 1000, rate: 55 }, { qty: 500, rate: 50 }, { qty: 200, rate: 40 },
+  { qty: 100, rate: 35 }, { qty: 50,  rate: 30 }, { qty: 40,  rate: 25 },
+  { qty: 30,  rate: 22 }, { qty: 20,  rate: 18 }, { qty: 10,  rate: 15 },
+];
+
+function getDiscountRate(qty: number, tiers: DiscountTier[]): number {
+  const sorted = [...tiers].sort((a, b) => b.qty - a.qty);
+  return sorted.find(t => qty >= t.qty)?.rate ?? 0;
+}
+
+function PriceModal({ products, onClose }: { products: Product[]; onClose: () => void }) {
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Product | null>(null);
+  const [qty, setQty] = useState('1');
+  const [showResult, setShowResult] = useState(false);
+  const [tiers, setTiers] = useState<DiscountTier[]>(DEFAULT_DISCOUNTS);
+  const [dropOpen, setDropOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'main')).then(snap => {
+      if (snap.exists()) {
+        const d = snap.data();
+        if (Array.isArray(d.discounts) && d.discounts.length > 0) setTiers(d.discounts);
+      }
+    }).catch(() => {});
+    inputRef.current?.focus();
+  }, []);
+
+  const filtered = search.length >= 1
+    ? products.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.code.toLowerCase().includes(search.toLowerCase())
+      ).slice(0, 8)
+    : [];
+
+  function pick(p: Product) {
+    setSelected(p);
+    setSearch(p.name);
+    setDropOpen(false);
+    setShowResult(false);
+  }
+
+  const qtyNum = Math.max(1, parseInt(qty.replace(',', '.')) || 1);
+  const discRate = selected ? getDiscountRate(qtyNum, tiers) : 0;
+  const unitPrice = selected ? selected.list * (1 - discRate / 100) : 0;
+  const totalPrice = unitPrice * qtyNum;
+
+  // Tüm tier basamakları — seçilen adet için hangisi uygulanıyor vurgu
+  const sortedTiers = [...tiers].sort((a, b) => a.qty - b.qty);
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box" style={{ maxWidth: 500, width: '96vw' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,93,4,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IconTag size={18} color="#E85D04" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>Fiyat Sor</h3>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Ürün seç · Adet gir · Fiyat öğren</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}>
+            <IconX size={20} />
+          </button>
+        </div>
+
+        {/* Ürün Arama */}
+        <div style={{ marginBottom: 14, position: 'relative' }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: .4 }}>Ürün Adı veya Kodu</label>
+          <div style={{ position: 'relative' }}>
+            <IconSearch size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', pointerEvents: 'none' }} />
+            <input
+              ref={inputRef}
+              className="form-input"
+              style={{ paddingLeft: 34 }}
+              placeholder="Ürün ara..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setSelected(null); setShowResult(false); setDropOpen(true); }}
+              onFocus={() => search && setDropOpen(true)}
+              onBlur={() => setTimeout(() => setDropOpen(false), 150)}
+            />
+          </div>
+          {dropOpen && filtered.length > 0 && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+              background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10,
+              marginTop: 4, maxHeight: 240, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,.15)',
+            }}>
+              {filtered.map(p => (
+                <div
+                  key={p.id}
+                  onMouseDown={() => pick(p)}
+                  style={{
+                    padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{p.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>
+                      <code style={{ background: 'var(--surface-2)', padding: '1px 5px', borderRadius: 3 }}>{p.code}</code>
+                      <span style={{ marginLeft: 6 }}>{p.catName}</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#E85D04', flexShrink: 0, marginLeft: 8 }}>
+                    ₺{p.list.toLocaleString('tr-TR')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {search.length >= 1 && filtered.length === 0 && !selected && (
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, paddingLeft: 2 }}>Ürün bulunamadı</div>
+          )}
+        </div>
+
+        {/* Seçilen ürün bilgisi */}
+        {selected && (
+          <div style={{
+            background: 'rgba(232,93,4,.07)', border: '1px solid rgba(232,93,4,.2)',
+            borderRadius: 10, padding: '10px 14px', marginBottom: 14,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+          }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{selected.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                Liste: <strong style={{ color: '#E85D04' }}>₺{selected.list.toLocaleString('tr-TR')}</strong>
+                <span style={{ marginLeft: 10 }}>Stok: {selected.stock ?? 0} adet</span>
+              </div>
+            </div>
+            <button
+              onClick={() => { setSelected(null); setSearch(''); setShowResult(false); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0 }}
+            >
+              <IconX size={15} />
+            </button>
+          </div>
+        )}
+
+        {/* Adet + Fiyat Sor */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: .4 }}>Adet</label>
+            <input
+              className="form-input"
+              type="number"
+              min={1}
+              value={qty}
+              onChange={e => { setQty(e.target.value); setShowResult(false); }}
+              onKeyDown={e => e.key === 'Enter' && selected && setShowResult(true)}
+              placeholder="örn: 50"
+              style={{ fontSize: 16, fontWeight: 700 }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button
+              className="btn btn-primary"
+              style={{ height: 42, paddingLeft: 24, paddingRight: 24, fontSize: 14 }}
+              disabled={!selected}
+              onClick={() => setShowResult(true)}
+            >
+              Fiyat Sor
+            </button>
+          </div>
+        </div>
+
+        {/* Sonuç */}
+        {showResult && selected && (
+          <>
+            {/* Ana fiyat kartı */}
+            <div style={{
+              background: 'linear-gradient(135deg, #E85D04 0%, #c44b00 100%)',
+              borderRadius: 14, padding: '18px 20px', marginBottom: 16, color: '#fff',
+            }}>
+              <div style={{ fontSize: 12, opacity: .8, marginBottom: 4 }}>
+                {qtyNum.toLocaleString('tr-TR')} adet için birim fiyat
+                {discRate > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,255,255,.2)', borderRadius: 6, padding: '1px 8px', fontSize: 11 }}>%{discRate} indirim</span>}
+              </div>
+              <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1 }}>
+                ₺{unitPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </div>
+              <div style={{ fontSize: 13, opacity: .75, marginTop: 6 }}>
+                Toplam: ₺{totalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                {discRate === 0 && <span style={{ marginLeft: 8, fontSize: 11 }}>· İndirim yok</span>}
+              </div>
+            </div>
+
+            {/* İskonto Kademeli Tablo */}
+            {sortedTiers.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: .4 }}>
+                  Tüm İskonto Kademeleri
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                  {sortedTiers.map((tier, i) => {
+                    const tierRate = tier.rate;
+                    const tierUnit = selected.list * (1 - tierRate / 100);
+                    const isActive = discRate === tierRate && qtyNum >= tier.qty;
+                    const nextTier = sortedTiers[i + 1];
+                    const rangeLabel = nextTier
+                      ? `${tier.qty}–${nextTier.qty - 1} adet`
+                      : `${tier.qty}+ adet`;
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          borderRadius: 10, padding: '10px 12px',
+                          border: isActive ? '2px solid #E85D04' : '1px solid var(--border)',
+                          background: isActive ? 'rgba(232,93,4,.08)' : 'var(--surface-2)',
+                          transition: 'all .15s',
+                        }}
+                      >
+                        <div style={{ fontSize: 10, color: isActive ? '#E85D04' : 'var(--text-3)', fontWeight: 600, marginBottom: 4 }}>
+                          {rangeLabel}
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: isActive ? '#E85D04' : 'var(--text-1)' }}>
+                          ₺{tierUnit.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>%{tierRate} indirim</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
+          <button className="btn btn-secondary" onClick={onClose}>Kapat</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const CAT_COLORS = ['#E85D04','#3b82f6','#10b981','#8B5CF6','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316'];
@@ -230,6 +473,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [stockModal, setStockModal] = useState(false);
+  const [priceModal, setPriceModal] = useState(false);
   // İmalat fiyatı girişi
   const [costInputs, setCostInputs] = useState<Record<string, string>>({});
   const [savingCost, setSavingCost] = useState<string | null>(null);
@@ -364,7 +608,10 @@ export default function DashboardPage() {
           <div className="page-title">Ana Ekran</div>
           <div className="page-sub">{dateStr}</div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setPriceModal(true)}>
+            <IconTag size={14} /> Fiyat Sor
+          </button>
           <Link href="/products" className="btn btn-primary btn-sm">+ Yeni Ürün</Link>
           <Link href="/offers" className="btn btn-secondary btn-sm">📄 Yeni Teklif</Link>
         </div>
@@ -497,6 +744,9 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Price Modal */}
+        {priceModal && <PriceModal products={allProducts} onClose={() => setPriceModal(false)} />}
 
         {/* Stock Modal */}
         {stockModal && <StockModal products={allProducts} onClose={() => setStockModal(false)} />}
