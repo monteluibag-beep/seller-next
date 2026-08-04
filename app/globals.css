@@ -432,14 +432,18 @@ input[type="number"]::-webkit-outer-spin-button { opacity: .4; }
 /* Mobile responsive */
 @media (max-width: 768px) {
   .sidebar { display: none !important; }
-  .main { margin-left: 0 !important; }
+  .main { margin-left: 0 !important; width: 100%; max-width: 100vw; overflow-x: hidden; }
   .mob-topbar { display: flex !important; }
   .bottom-nav { display: flex !important; align-items: stretch; }
   .topbar { display: none; }
-  .page-content { padding: 14px 12px 80px; }
+  .page-content { padding: 14px 12px 80px; overflow-x: hidden; }
   .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 10px; }
   .grid-2 { grid-template-columns: 1fr !important; }
-  table { min-width: 480px; font-size: 12px; }
+  /* Tablolar scroll wrapper içinde kalır, sayfa genişliğini aşamaz */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+  .table-wrap table { min-width: 480px; font-size: 12px; }
+  /* Bağımsız table'lar için de */
+  table { font-size: 12px; }
   .form-input { font-size: 16px !important; }
 
   /* Modal: bottom sheet on mobile */
