@@ -55,7 +55,7 @@ export function generateOfferHtml(offer: Offer, firm: FirmInfo): string {
     const total = unit * item.qty;
     const disc  = item.discountRate ?? 0;
     const imgHtml = item.photo
-      ? `<img src="${item.photo}" alt="${esc(item.name)}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;display:block;flex-shrink:0;">`
+      ? `<img src="${item.photo}" alt="${esc(item.name)}" style="width:56px;height:56px;object-fit:contain;border-radius:6px;background:#ffffff;display:block;flex-shrink:0;">`
       : `<div style="width:44px;height:44px;border-radius:5px;background:#F0F0F0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="1.5">
              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
