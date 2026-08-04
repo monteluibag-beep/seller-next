@@ -601,37 +601,22 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {/* Kategori filtre sekmeleri */}
-          {usedCatNames.length > 1 && (
-            <div style={{ padding: '0 16px 12px', display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
-              <button
-                onClick={() => setCatFilter('')}
-                style={{
-                  padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
-                  background: catFilter === '' ? 'var(--or)' : 'var(--surface-2)',
-                  color: catFilter === '' ? '#fff' : 'var(--text-2)',
-                }}
+          {/* Kategori filtre dropdown */}
+          {usedCatNames.length > 0 && (
+            <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--border)' }}>
+              <select
+                className="form-input"
+                value={catFilter}
+                onChange={e => setCatFilter(e.target.value)}
+                style={{ maxWidth: 260, height: 36, fontSize: 13 }}
               >
-                Tümü <span style={{ opacity: .7 }}>({products.length})</span>
-              </button>
-              {usedCatNames.map(cat => {
-                const count = products.filter(p => p.catName === cat).length;
-                const active = catFilter === cat;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setCatFilter(active ? '' : cat!)}
-                    style={{
-                      padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
-                      background: active ? 'var(--or)' : 'var(--surface-2)',
-                      color: active ? '#fff' : 'var(--text-2)',
-                      transition: 'all .15s',
-                    }}
-                  >
-                    {cat} <span style={{ opacity: .7 }}>({count})</span>
-                  </button>
-                );
-              })}
+                <option value="">Tüm Kategoriler ({products.length})</option>
+                {usedCatNames.map(cat => (
+                  <option key={cat} value={cat!}>
+                    {cat} ({products.filter(p => p.catName === cat).length})
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
