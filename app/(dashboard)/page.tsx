@@ -493,6 +493,12 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    const handler = () => setPriceModal(true);
+    document.addEventListener('open-price-modal', handler);
+    return () => document.removeEventListener('open-price-modal', handler);
+  }, []);
+
+  useEffect(() => {
     async function loadStats() {
       setLoading(true);
       try {
