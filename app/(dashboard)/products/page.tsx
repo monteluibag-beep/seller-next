@@ -83,6 +83,59 @@ function recommendedList(cost: number): number {
 }
 
 type ScanTarget = 'search' | 'barcode' | 'add' | null;
+type IE = { id: string; field: 'stock' | 'list' | 'costUsd'; value: string };
+
+function InlineCell({ pid, field, ie, onStart, onSave, onCancel, onChange, children, fw, w }: {
+  pid: string; field: IE['field']; ie: IE | null;
+  onStart: (e: React.MouseEvent) => void;
+  onSave: (ie: IE) => void;
+  onCancel: () => void;
+  onChange: (v: IE | null) => void;
+  children: React.ReactNode;
+  fw?: boolean; w?: number;
+}) {
+  const active = ie?.id === pid && ie.field === field;
+  return (
+    <td onClick={active ? undefined : onStart} style={{ cursor: 'text', fontWeight: fw ? 700 : undefined }}>
+      {active ? (
+        <input
+          autoFocus
+          inputMode="decimal"
+          value={ie!.value}
+          onChange={e => onChange({ ...ie!, value: e.target.value })}
+          onBlur={() => onSave(ie!)}
+          onKeyDown={e => { if (e.key === 'Enter') onSave(ie!); if (e.key === 'Escape') onCancel(); }}
+          onClick={e => e.stopPropagation()}
+          style={{ width: w ?? (fw ? 90 : 80), padding: '3px 7px', borderRadius: 6, border: '2px solid var(--or)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 13, fontWeight: fw ? 700 : undefined, outline: 'none' }}
+        />
+      ) : children}
+    </td>
+  );
+}
+
+function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label, w, color, children }: {
+  pid: string; field: IE['field']; ie: IE | null; label: string; w: number; color?: string;
+  onStart: (e: React.MouseEvent) => void; onSave: (ie: IE) => void;
+  onCancel: () => void; onChange: (v: IE | null) => void; children: React.ReactNode;
+}) {
+  const active = ie?.id === pid && ie.field === field;
+  return (
+    <span style={{ color: 'var(--text-3)', fontSize: 11 }}>{label}:&nbsp;
+      {active ? (
+        <input autoFocus inputMode="decimal" value={ie!.value}
+          onChange={e => onChange({ ...ie!, value: e.target.value })}
+          onBlur={() => onSave(ie!)}
+          onKeyDown={e => { if (e.key === 'Enter') onSave(ie!); if (e.key === 'Escape') onCancel(); }}
+          onClick={e => e.stopPropagation()}
+          style={{ width: w, padding: '2px 6px', borderRadius: 5, border: '2px solid var(--or)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 12, outline: 'none' }} />
+      ) : (
+        <strong onClick={onStart} style={{ color: color ?? 'var(--text-1)', borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>
+          {children}
+        </strong>
+      )}
+    </span>
+  );
+}
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -109,6 +162,8 @@ export default function ProductsPage() {
   const [bulkSaving, setBulkSaving] = useState(false);
   // Ürün detay kartı
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+  // Inline hücre düzenleme
+  const [inlineEdit, setInlineEdit] = useState<IE | null>(null);
   // Varyantlar
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [varSize, setVarSize] = useState('');
@@ -419,6 +474,32 @@ export default function ProductsPage() {
     }
   }
 
+  async function saveInline(ie: IE) {
+    const raw = ie.value.replace(',', '.');
+    const num = parseFloat(raw);
+    if (isNaN(num) || num < 0) { setInlineEdit(null); return; }
+    const updates: Record<string, number> = {};
+    if (ie.field === 'stock')   updates.stock   = Math.round(num);
+    if (ie.field === 'list')    updates.list    = num;
+    if (ie.field === 'costUsd') {
+      updates.costUsd = num;
+      // costUsd değişince liste fiyatını da güncelle
+      const p = products.find(x => x.id === ie.id);
+      if (p) updates.list = p.list > 0 ? p.list : recommendedList(num * usdRate);
+    }
+    setProducts(prev => prev.map(p => p.id === ie.id ? { ...p, ...updates } : p));
+    setInlineEdit(null);
+    await updateDoc(doc(db, 'products', ie.id), updates);
+  }
+
+  function startInline(e: React.MouseEvent, p: Product, field: IE['field']) {
+    e.stopPropagation();
+    const cur = field === 'stock' ? String(p.stock ?? 0)
+               : field === 'list' ? String(p.list ?? 0)
+               : String(p.costUsd ?? 0);
+    setInlineEdit({ id: p.id!, field, value: cur });
+  }
+
   async function remove(id: string) {
     if (!confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
     await deleteDoc(doc(db, 'products', id));
@@ -684,18 +765,22 @@ export default function ProductsPage() {
                       <td>{p.code ? <code style={{ background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 4, fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{p.code}</code> : <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                       <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{p.barcode || '—'}</td>
                       <td>{p.catName ? <span className="badge badge-blue">{p.catName}</span> : '—'}</td>
-                      <td>
+                      {/* Maliyet — inline edit */}
+                      <InlineCell pid={p.id!} field="costUsd" ie={inlineEdit} onStart={e => startInline(e, p, 'costUsd')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit}>
                         {p.costUsd && p.costUsd > 0 ? (
-                          <span title={`$${p.costUsd} × ${usdRate.toFixed(2)} kur`}>
-                            ₺{effectiveCost(p).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                            <span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 4 }}>(${p.costUsd})</span>
+                          <span title="Tıkla ve düzenle" style={{ borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>
+                            ₺{effectiveCost(p).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}<span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 4 }}>(${p.costUsd})</span>
                           </span>
-                        ) : (
-                          <span>₺{(p.cost ?? 0).toLocaleString('tr-TR')}</span>
-                        )}
-                      </td>
-                      <td style={{ fontWeight: 700 }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</td>
-                      <td><span style={{ fontWeight: 700, color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</span></td>
+                        ) : <span style={{ color: 'var(--text-3)', borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>—</span>}
+                      </InlineCell>
+                      {/* Liste Fiyatı — inline edit */}
+                      <InlineCell pid={p.id!} field="list" ie={inlineEdit} onStart={e => startInline(e, p, 'list')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} fw>
+                        <span title="Tıkla ve düzenle" style={{ borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</span>
+                      </InlineCell>
+                      {/* Stok — inline edit */}
+                      <InlineCell pid={p.id!} field="stock" ie={inlineEdit} onStart={e => startInline(e, p, 'stock')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} w={64}>
+                        <span title="Tıkla ve düzenle" style={{ fontWeight: 700, color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80', borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>{p.stock}</span>
+                      </InlineCell>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
                           <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} title="Düzenle"><IconEdit size={13} /></button>
@@ -730,15 +815,16 @@ export default function ProductsPage() {
                     {p.code && <code style={{ background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4, fontSize: 10, color: 'var(--text-2)' }}>{p.code}</code>}
                     {p.catName && <span className="badge badge-blue" style={{ fontSize: 10 }}>{p.catName}</span>}
                   </div>
-                  <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 12 }}>
-                    <span style={{ color: 'var(--text-3)' }}>
-                      Maliyet: <strong style={{ color: 'var(--text-1)' }}>
-                        ₺{effectiveCost(p).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                        {p.costUsd && p.costUsd > 0 && <span style={{ color: 'var(--text-3)', fontWeight: 400 }}> (${p.costUsd})</span>}
-                      </strong>
-                    </span>
-                    <span style={{ color: 'var(--text-3)' }}>Liste: <strong style={{ color: 'var(--text-1)' }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</strong></span>
-                    <span style={{ color: 'var(--text-3)' }}>Stok: <strong style={{ color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</strong></span>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                    <MobInline pid={p.id!} field="costUsd" ie={inlineEdit} onStart={e => startInline(e, p, 'costUsd')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} label="$" w={64}>
+                      {p.costUsd ? `$${p.costUsd}` : '—'}
+                    </MobInline>
+                    <MobInline pid={p.id!} field="list" ie={inlineEdit} onStart={e => startInline(e, p, 'list')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} label="Liste" w={72}>
+                      ₺{(p.list ?? 0).toLocaleString('tr-TR')}
+                    </MobInline>
+                    <MobInline pid={p.id!} field="stock" ie={inlineEdit} onStart={e => startInline(e, p, 'stock')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} label="Stok" w={52} color={p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80'}>
+                      {p.stock}
+                    </MobInline>
                   </div>
                   {p.variants && p.variants.length > 0 && (
                     <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
