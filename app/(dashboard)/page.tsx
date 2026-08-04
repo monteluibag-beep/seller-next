@@ -2,12 +2,13 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool } from '@tabler/icons-react';
+import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, IconX } from '@tabler/icons-react';
 import Link from 'next/link';
 import { collection, getDocs, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Product, Sale, Offer } from '@/types';
 import { useRates } from '@/hooks/useRates';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const SalesCharts = dynamic(() => import('@/components/SalesCharts'), {
   ssr: false,
@@ -48,6 +49,165 @@ interface Stats {
   lastYearTotal: number;
 }
 
+const CAT_COLORS = ['#E85D04','#3b82f6','#10b981','#8B5CF6','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316'];
+
+function StockModal({ products, onClose }: { products: Product[]; onClose: () => void }) {
+  const [catFilter, setCatFilter] = useState('');
+  const [sortBy, setSortBy] = useState<'stock-desc' | 'stock-asc' | 'az' | 'za'>('stock-desc');
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    const update = () => setIsDark(document.documentElement.getAttribute('data-theme') !== 'light');
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
+
+  const cats = [...new Set(products.map(p => p.catName).filter(Boolean))] as string[];
+
+  // Kategori bazlı stok özet verisi (grafik için)
+  const catData = cats.map((cat, i) => ({
+    cat,
+    stok: products.filter(p => p.catName === cat).reduce((s, p) => s + (p.stock ?? 0), 0),
+    urun: products.filter(p => p.catName === cat).length,
+    color: CAT_COLORS[i % CAT_COLORS.length],
+  })).sort((a, b) => b.stok - a.stok);
+
+  // Filtreli + sıralı ürün listesi
+  const filtered = products
+    .filter(p => !catFilter || p.catName === catFilter)
+    .sort((a, b) => {
+      if (sortBy === 'stock-desc') return (b.stock ?? 0) - (a.stock ?? 0);
+      if (sortBy === 'stock-asc')  return (a.stock ?? 0) - (b.stock ?? 0);
+      if (sortBy === 'az')  return a.name.localeCompare(b.name, 'tr');
+      return b.name.localeCompare(a.name, 'tr');
+    });
+
+  const gridColor = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.08)';
+  const tickColor = isDark ? 'rgba(255,255,255,.4)'  : 'rgba(0,0,0,.45)';
+  const tipBg     = isDark ? '#1e1e1e' : '#fff';
+  const tipBorder = isDark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.1)';
+  const tipLabel  = isDark ? '#fff' : '#111';
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box" style={{ maxWidth: 760, width: '96vw' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700 }}>Stok Dağılımı</h3>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              {products.length} ürün · {products.reduce((s, p) => s + (p.stock ?? 0), 0).toLocaleString('tr-TR')} toplam adet
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}>
+            <IconX size={20} />
+          </button>
+        </div>
+
+        {/* Kategori Özet Grafiği */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 8 }}>Kategoriye Göre Stok</div>
+          <div style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={catData} margin={{ top: 4, right: 8, left: -10, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                <XAxis
+                  dataKey="cat"
+                  tick={{ fill: tickColor, fontSize: 10 }}
+                  axisLine={false} tickLine={false}
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                />
+                <YAxis tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: tipBg, border: `1px solid ${tipBorder}`, borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: tipLabel, fontWeight: 700 }}
+                  formatter={(value: unknown) => [`${Number(value ?? 0).toLocaleString('tr-TR')} adet`, 'Stok']}
+                />
+                <Bar dataKey="stok" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                  {catData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Filtre & Sıralama */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <select
+            className="form-input"
+            value={catFilter}
+            onChange={e => setCatFilter(e.target.value)}
+            style={{ flex: 1, minWidth: 160, height: 36, fontSize: 12 }}
+          >
+            <option value="">Tüm Kategoriler</option>
+            {cats.map(c => (
+              <option key={c} value={c}>{c} ({products.filter(p => p.catName === c).reduce((s, p) => s + (p.stock ?? 0), 0)} adet)</option>
+            ))}
+          </select>
+          <select
+            className="form-input"
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as typeof sortBy)}
+            style={{ width: 180, height: 36, fontSize: 12, flexShrink: 0 }}
+          >
+            <option value="stock-desc">Stok: Çoktan Aza</option>
+            <option value="stock-asc">Stok: Azdan Çoğa</option>
+            <option value="az">İsim: A → Z</option>
+            <option value="za">İsim: Z → A</option>
+          </select>
+        </div>
+
+        {/* Ürün Listesi */}
+        <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--text-3)', fontWeight: 600, padding: '6px 8px', borderBottom: '1px solid var(--border)' }}>ÜRÜN</th>
+                <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--text-3)', fontWeight: 600, padding: '6px 8px', borderBottom: '1px solid var(--border)' }}>KATEGORİ</th>
+                <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--text-3)', fontWeight: 600, padding: '6px 8px', borderBottom: '1px solid var(--border)' }}>STOK</th>
+                <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--text-3)', fontWeight: 600, padding: '6px 8px', borderBottom: '1px solid var(--border)' }}>LİSTE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(p => {
+                const catIdx = cats.indexOf(p.catName || '');
+                const dotColor = CAT_COLORS[catIdx % CAT_COLORS.length] ?? '#aaa';
+                const isLow = (p.stock ?? 0) <= 5;
+                return (
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '7px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text-1)' }}>
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: dotColor, marginRight: 6, flexShrink: 0 }} />
+                      {p.name}
+                    </td>
+                    <td style={{ padding: '7px 8px', fontSize: 11, color: 'var(--text-3)' }}>{p.catName || '—'}</td>
+                    <td style={{ padding: '7px 8px', fontSize: 13, fontWeight: 700, textAlign: 'right', color: isLow ? '#ef4444' : 'var(--text-1)' }}>
+                      {(p.stock ?? 0).toLocaleString('tr-TR')}
+                      {isLow && <span style={{ fontSize: 9, marginLeft: 4, color: '#ef4444' }}>●</span>}
+                    </td>
+                    <td style={{ padding: '7px 8px', fontSize: 11, color: 'var(--text-3)', textAlign: 'right' }}>
+                      {p.list > 0 ? `₺${p.list.toLocaleString('tr-TR')}` : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn btn-secondary" onClick={onClose}>Kapat</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatTRY(n: number): string {
   if (n >= 1_000_000) return `₺${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `₺${(n / 1_000).toFixed(0)}B`;
@@ -68,6 +228,8 @@ export default function DashboardPage() {
   const [dateStr, setDateStr] = useState('');
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [stockModal, setStockModal] = useState(false);
   // İmalat fiyatı girişi
   const [costInputs, setCostInputs] = useState<Record<string, string>>({});
   const [savingCost, setSavingCost] = useState<string | null>(null);
@@ -90,6 +252,7 @@ export default function DashboardPage() {
         ]);
 
         const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+        setAllProducts(products);
         const sales = salesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Sale));
         const offers = offersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Offer));
 
@@ -210,11 +373,16 @@ export default function DashboardPage() {
       {/* Content */}
       <div className="page-content">
         <div className="stats-grid">
-          <div className="stat-card accent-orange">
+          <div
+            className="stat-card accent-orange"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setStockModal(true)}
+            title="Stok dağılımını görüntüle"
+          >
             <div className="stat-icon orange"><IconStack2 size={20} /></div>
             <div className="stat-label">Toplam Stok</div>
             <div className="stat-value">{loading ? '—' : (stats?.totalStock ?? 0).toLocaleString('tr-TR')}</div>
-            <div className="stat-sub">{loading ? '...' : `${stats?.productCount ?? 0} farklı ürün`}</div>
+            <div className="stat-sub">{loading ? '...' : `${stats?.productCount ?? 0} farklı ürün · grafik için tıkla`}</div>
           </div>
           <div className="stat-card accent-green">
             <div className="stat-icon green"><IconReceipt size={20} /></div>
@@ -329,6 +497,9 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Stock Modal */}
+        {stockModal && <StockModal products={allProducts} onClose={() => setStockModal(false)} />}
 
         <div className="grid-2">
           <div className="card">
