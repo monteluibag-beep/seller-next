@@ -201,8 +201,7 @@ function PriceModal({ products, onClose }: { products: Product[]; onClose: () =>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: .4 }}>Adet</label>
             <input
               className="form-input"
-              type="number"
-              min={1}
+              inputMode="decimal"
               value={qty}
               onChange={e => { setQty(e.target.value); setShowResult(false); }}
               onKeyDown={e => e.key === 'Enter' && selected && setShowResult(true)}
