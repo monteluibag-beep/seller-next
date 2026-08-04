@@ -47,6 +47,7 @@ export default function OffersPage() {
   const [productSearch, setProductSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [catAddMode, setCatAddMode] = useState(false); // kategori ile toplu ekleme modu
+  const [selCat, setSelCat] = useState('');
   const [saving, setSaving] = useState(false);
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   // PDF preview modal
@@ -516,44 +517,32 @@ export default function OffersPage() {
               </label>
 
               {catAddMode ? (
-                /* Kategori listesi */
                 (() => {
-                  const cats = [...new Set(products.map(p => p.catName).filter(Boolean))];
+                  const cats = [...new Set(products.map(p => p.catName).filter(Boolean))] as string[];
+                  const activeCat = selCat || cats[0] || '';
+                  const catProds = products.filter(p => p.catName === activeCat);
+                  const alreadyIn = catProds.filter(p => items.some(i => i.productId === p.id)).length;
                   return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {cats.map(cat => {
-                        const catProds = products.filter(p => p.catName === cat);
-                        const alreadyIn = catProds.filter(p => items.some(i => i.productId === p.id)).length;
-                        return (
-                          <div
-                            key={cat}
-                            style={{
-                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                              padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
-                              background: 'var(--surface-2)', border: '1px solid var(--border)',
-                              transition: 'background .1s',
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,93,4,.07)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface-2)')}
-                          >
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>{cat}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                                {catProds.length} ürün{alreadyIn > 0 ? ` · ${alreadyIn} zaten ekli` : ''}
-                              </div>
-                            </div>
-                            <button
-                              onMouseDown={() => addByCategory(cat!)}
-                              style={{
-                                padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                                background: 'var(--or)', color: '#fff', fontSize: 12, fontWeight: 700,
-                              }}
-                            >
-                              + Tümünü Ekle
-                            </button>
-                          </div>
-                        );
-                      })}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select
+                        className="form-input"
+                        value={activeCat}
+                        onChange={e => setSelCat(e.target.value)}
+                        style={{ flex: 1, height: 40, fontSize: 13 }}
+                      >
+                        {cats.map(cat => {
+                          const n = products.filter(p => p.catName === cat).length;
+                          return <option key={cat} value={cat}>{cat} ({n} ürün)</option>;
+                        })}
+                      </select>
+                      <button
+                        className="btn btn-primary"
+                        style={{ height: 40, whiteSpace: 'nowrap', flexShrink: 0 }}
+                        onClick={() => addByCategory(activeCat)}
+                        disabled={!activeCat}
+                      >
+                        + Tümünü Ekle {alreadyIn > 0 ? `(${alreadyIn} ekli)` : `(${catProds.length})`}
+                      </button>
                     </div>
                   );
                 })()
