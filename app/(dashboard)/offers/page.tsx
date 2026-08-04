@@ -592,9 +592,9 @@ export default function OffersPage() {
                       >
                         {/* Ürün resmi */}
                         {p.photo
-                          ? <img src={p.photo} alt={p.name} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
-                          : <div style={{ width: 44, height: 44, background: 'var(--surface-3)', borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <IconSearch size={15} color="var(--text-3)" />
+                          ? <img src={p.photo} alt={p.name} style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, flexShrink: 0, background: 'var(--surface-3)' }} />
+                          : <div style={{ width: 56, height: 56, background: 'var(--surface-3)', borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <IconSearch size={18} color="var(--text-3)" />
                             </div>
                         }
                         {/* Ürün bilgisi */}

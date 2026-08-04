@@ -662,8 +662,8 @@ export default function ProductsPage() {
                       </td>
                       <td>
                         {p.photo
-                          ? <img src={p.photo} alt={p.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
-                          : <div style={{ width: 40, height: 40, background: 'var(--surface-2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconPhoto size={18} color="var(--text-3)" /></div>
+                          ? <img src={p.photo} alt={p.name} style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: 'var(--surface-2)' }} />
+                          : <div style={{ width: 56, height: 56, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconPhoto size={22} color="var(--text-3)" /></div>
                         }
                       </td>
                       <td style={{ fontWeight: 600 }}>{p.name}</td>
@@ -707,8 +707,8 @@ export default function ProductsPage() {
                 <input type="checkbox" checked={selected.has(p.id!)} onChange={() => toggleSelect(p.id!)}
                   style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, accentColor: 'var(--or)' }} />
                 {p.photo
-                  ? <img src={p.photo} alt={p.name} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
-                  : <div style={{ width: 52, height: 52, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconPhoto size={20} color="var(--text-3)" /></div>
+                  ? <img src={p.photo} alt={p.name} style={{ width: 68, height: 68, objectFit: 'contain', borderRadius: 10, flexShrink: 0, background: 'var(--surface-2)' }} />
+                  : <div style={{ width: 68, height: 68, background: 'var(--surface-2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconPhoto size={24} color="var(--text-3)" /></div>
                 }
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', marginBottom: 3 }}>{p.name}</div>
