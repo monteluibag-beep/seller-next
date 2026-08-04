@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import {
-  collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
+  collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Product, Category } from '@/types';
@@ -99,6 +99,11 @@ export default function ProductsPage() {
   const [fabOpen, setFabOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [importing, setImporting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkType, setBulkType] = useState<'percent' | 'amount'>('percent');
+  const [bulkValue, setBulkValue] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const { rates } = useRates();
@@ -346,6 +351,61 @@ export default function ProductsPage() {
     load();
   }
 
+  // Seçim fonksiyonları
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map(p => p.id!)));
+    }
+  }
+
+  async function bulkDelete() {
+    if (!confirm(`${selected.size} ürünü silmek istediğinize emin misiniz?`)) return;
+    const batch = writeBatch(db);
+    selected.forEach(id => batch.delete(doc(db, 'products', id)));
+    await batch.commit();
+    setSelected(new Set());
+    load();
+  }
+
+  async function bulkPriceUpdate() {
+    const val = parseFloat(bulkValue);
+    if (!val || val === 0) return;
+    setBulkSaving(true);
+    try {
+      const batch = writeBatch(db);
+      selected.forEach(id => {
+        const p = products.find(x => x.id === id);
+        if (!p) return;
+        let newList: number;
+        if (bulkType === 'percent') {
+          newList = Math.round(p.list * (1 + val / 100));
+        } else {
+          newList = Math.round(p.list + val);
+        }
+        if (newList < 0) newList = 0;
+        batch.update(doc(db, 'products', id), { list: newList });
+      });
+      await batch.commit();
+      setBulkOpen(false);
+      setBulkValue('');
+      setSelected(new Set());
+      load();
+      showToast(`✅ ${selected.size} ürünün liste fiyatı güncellendi`);
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
   function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -398,12 +458,15 @@ export default function ProductsPage() {
     }
   }
 
+  const allSelected = filtered.length > 0 && selected.size === filtered.length;
+  const someSelected = selected.size > 0;
+
   return (
     <>
       <div className="topbar">
         <div>
           <div className="page-title">Ürünler</div>
-          <div className="page-sub">{products.length} ürün kayıtlı</div>
+          <div className="page-sub">{products.length} ürün kayıtlı{someSelected && ` · ${selected.size} seçili`}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={exportCSV} title="CSV olarak dışa aktar">
@@ -427,6 +490,29 @@ export default function ProductsPage() {
           </button>
         </div>
       </div>
+
+      {/* Seçili ürün action bar */}
+      {someSelected && (
+        <div style={{
+          background: 'var(--or-tint)', borderBottom: '1px solid rgba(232,93,4,.25)',
+          padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--or)', flex: 1 }}>
+            {selected.size} ürün seçildi
+          </span>
+          <button className="btn btn-secondary btn-sm" onClick={() => { setBulkOpen(true); setBulkValue(''); }}
+            style={{ color: 'var(--or)', borderColor: 'rgba(232,93,4,.4)' }}>
+            💰 Fiyat Güncelle
+          </button>
+          <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.12)', color: '#F87171' }}
+            onClick={bulkDelete}>
+            🗑 Sil ({selected.size})
+          </button>
+          <button className="btn btn-secondary btn-sm" onClick={() => setSelected(new Set())}>
+            İptal
+          </button>
+        </div>
+      )}
 
       <div className="page-content">
         <div className="card">
@@ -462,13 +548,21 @@ export default function ProductsPage() {
               <table>
                 <thead>
                   <tr>
+                    <th style={{ width: 36 }}>
+                      <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+                        style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--or)' }} />
+                    </th>
                     <th>Foto</th><th>Ürün Adı</th><th>Kod</th><th>Barkod</th>
                     <th>Kategori</th><th>Maliyet</th><th>Liste</th><th>Stok</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(p => (
-                    <tr key={p.id}>
+                    <tr key={p.id} style={{ background: selected.has(p.id!) ? 'rgba(232,93,4,.06)' : undefined }}>
+                      <td style={{ width: 36 }}>
+                        <input type="checkbox" checked={selected.has(p.id!)} onChange={() => toggleSelect(p.id!)}
+                          style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--or)' }} />
+                      </td>
                       <td>
                         {p.photo
                           ? <img src={p.photo} alt={p.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
@@ -512,7 +606,9 @@ export default function ProductsPage() {
             ) : filtered.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Ürün bulunamadı</div>
             ) : filtered.map(p => (
-              <div key={p.id} style={{ display: 'flex', gap: 12, padding: '12px 14px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+              <div key={p.id} style={{ display: 'flex', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)', alignItems: 'center', background: selected.has(p.id!) ? 'rgba(232,93,4,.06)' : undefined }}>
+                <input type="checkbox" checked={selected.has(p.id!)} onChange={() => toggleSelect(p.id!)}
+                  style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, accentColor: 'var(--or)' }} />
                 {p.photo
                   ? <img src={p.photo} alt={p.name} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
                   : <div style={{ width: 52, height: 52, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconPhoto size={20} color="var(--text-3)" /></div>
@@ -746,6 +842,78 @@ export default function ProductsPage() {
               <button className="btn btn-secondary" onClick={() => setOpen(false)} style={{ width: '100%' }}>İptal</button>
               <button className="btn btn-primary" onClick={save} disabled={saving || !form.name.trim() || !!barcodeError} style={{ width: '100%' }}>
                 {saving ? 'Kaydediliyor...' : editing ? 'Güncelle' : 'Kaydet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toplu Fiyat Güncelleme Modalı */}
+      {bulkOpen && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setBulkOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 400 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 18px 14px', borderBottom: '1px solid var(--border)' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>Toplu Fiyat Güncelle</h3>
+              <button onClick={() => setBulkOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={20} /></button>
+            </div>
+            <div style={{ padding: '16px 18px' }}>
+              <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 14 }}>
+                {selected.size} ürünün liste fiyatı güncellenecek
+              </div>
+
+              {/* Yüzde / Tutar seçimi */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                {(['percent', 'amount'] as const).map(t => (
+                  <button key={t} onClick={() => setBulkType(t)} style={{
+                    padding: '10px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                    border: `2px solid ${bulkType === t ? 'var(--or)' : 'var(--border-2)'}`,
+                    background: bulkType === t ? 'var(--or-tint)' : 'transparent',
+                    color: bulkType === t ? 'var(--or)' : 'var(--text-2)',
+                  }}>
+                    {t === 'percent' ? '% Yüzde' : '₺ Tutar'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  {bulkType === 'percent' ? 'Yüzde Değişim (+ artış, - indirim)' : 'Tutar Değişim (+ artış, - indirim)'}
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    className="form-input"
+                    type="number"
+                    value={bulkValue}
+                    onChange={e => setBulkValue(e.target.value)}
+                    placeholder={bulkType === 'percent' ? 'örn: 10 veya -5' : 'örn: 50 veya -20'}
+                    style={{ fontSize: 20, fontWeight: 700, textAlign: 'center' }}
+                    onFocus={e => e.target.select()}
+                  />
+                  <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-3)', flexShrink: 0 }}>
+                    {bulkType === 'percent' ? '%' : '₺'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Önizleme */}
+              {bulkValue && !isNaN(parseFloat(bulkValue)) && (
+                <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>
+                  <strong>Örnek:</strong> ₺100 liste fiyatı →{' '}
+                  <strong style={{ color: 'var(--or)' }}>
+                    ₺{bulkType === 'percent'
+                      ? Math.round(100 * (1 + parseFloat(bulkValue) / 100))
+                      : Math.round(100 + parseFloat(bulkValue))
+                    }
+                  </strong>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, padding: '4px 18px 16px' }}>
+              <button className="btn btn-secondary" onClick={() => setBulkOpen(false)}>İptal</button>
+              <button className="btn btn-primary" onClick={bulkPriceUpdate}
+                disabled={bulkSaving || !bulkValue || isNaN(parseFloat(bulkValue)) || parseFloat(bulkValue) === 0}>
+                {bulkSaving ? 'Güncelleniyor...' : `${selected.size} Ürünü Güncelle`}
               </button>
             </div>
           </div>
