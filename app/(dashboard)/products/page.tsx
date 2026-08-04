@@ -820,10 +820,11 @@ export default function ProductsPage() {
                 <div className="form-group">
                   <label className="form-label">Maliyet (₺)</label>
                   <input
-                    className="form-input" type="number" min={0}
-                    value={form.cost} onFocus={selectAll}
+                    className="form-input" inputMode="decimal" min={0}
+                    value={form.cost || ''} onFocus={selectAll}
+                    placeholder="0"
                     onChange={e => {
-                      const cost = parseFloat(e.target.value) || 0;
+                      const cost = parseFloat(e.target.value.replace(',', '.')) || 0;
                       setForm(f => ({
                         ...f,
                         cost,
@@ -847,9 +848,10 @@ export default function ProductsPage() {
                     )}
                   </label>
                   <input
-                    className="form-input" type="number" min={0}
-                    value={form.list} onFocus={selectAll}
-                    onChange={e => { setListManual(true); set('list', parseFloat(e.target.value) || 0); }}
+                    className="form-input" inputMode="decimal" min={0}
+                    value={form.list || ''} onFocus={selectAll}
+                    placeholder="0"
+                    onChange={e => { setListManual(true); set('list', parseFloat(e.target.value.replace(',', '.')) || 0); }}
                     style={{ borderColor: !listManual && form.cost > 0 ? 'rgba(232,93,4,.4)' : undefined, background: !listManual && form.cost > 0 ? 'rgba(232,93,4,.04)' : undefined }}
                   />
                   {form.cost > 0 && (
@@ -929,9 +931,9 @@ export default function ProductsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <input
                     className="form-input"
-                    type="number"
+                    inputMode="decimal"
                     value={bulkValue}
-                    onChange={e => setBulkValue(e.target.value)}
+                    onChange={e => setBulkValue(e.target.value.replace(',', '.'))}
                     placeholder={bulkField === 'cost' ? 'örn: 2 veya -1.5' : bulkType === 'percent' ? 'örn: 10 veya -5' : 'örn: 50 veya -20'}
                     style={{ fontSize: 20, fontWeight: 700, textAlign: 'center' }}
                     onFocus={e => e.target.select()}

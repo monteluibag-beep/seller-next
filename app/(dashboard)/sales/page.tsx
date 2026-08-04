@@ -457,10 +457,10 @@ export default function SalesPage() {
                                 style={{ width: 65, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, background: 'var(--bg)', color: 'var(--text-1)', textAlign: 'center' }} />
                             </td>
                             <td style={{ textAlign: 'right' }}>
-                              <input type="number" min={0}
+                              <input inputMode="decimal" min={0}
                                 value={currency === 'TRY' ? item.price : parseFloat(unitForeign.toFixed(4))}
                                 onChange={e => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                  const val = parseFloat(e.target.value.replace(',', '.')) || 0;
                                   updatePrice(item.productId, currency === 'TRY' ? val : val * rate);
                                 }}
                                 style={{ width: 100, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, background: 'var(--bg)', color: 'var(--text-1)', textAlign: 'right' }} />
@@ -503,10 +503,10 @@ export default function SalesPage() {
                           </div>
                           <div>
                             <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 3 }}>BİRİM ({sym})</div>
-                            <input type="number" min={0}
+                            <input inputMode="decimal" min={0}
                               value={currency === 'TRY' ? item.price : parseFloat(unitForeign.toFixed(4))}
                               onChange={e => {
-                                const val = parseFloat(e.target.value) || 0;
+                                const val = parseFloat(e.target.value.replace(',', '.')) || 0;
                                 updatePrice(item.productId, currency === 'TRY' ? val : val * rate);
                               }}
                               className="form-input" style={{ padding: '6px 10px', fontSize: 14, textAlign: 'right' }} />

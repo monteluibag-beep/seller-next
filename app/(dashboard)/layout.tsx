@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Sidebar from '@/components/Sidebar';
 import MobTopbar from '@/components/MobTopbar';
 import BottomNav from '@/components/BottomNav';
+import DecimalFixer from '@/components/DecimalFixer';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
@@ -40,6 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <DecimalFixer />
       <Sidebar />
       <div className="main" style={{ flex: 1 }}>
         <MobTopbar />

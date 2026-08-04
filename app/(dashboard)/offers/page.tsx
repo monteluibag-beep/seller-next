@@ -593,8 +593,8 @@ export default function OffersPage() {
                           </td>
                           <td>
                             <input
-                              type="number" min={0} value={item.listPrice}
-                              onChange={e => setListPrice(item.productId, parseFloat(e.target.value) || 0)}
+                              inputMode="decimal" min={0} value={item.listPrice}
+                              onChange={e => setListPrice(item.productId, parseFloat(e.target.value.replace(',', '.')) || 0)}
                               style={{ width: 110, padding: '4px 8px', background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)' }}
                             />
                           </td>
@@ -609,8 +609,8 @@ export default function OffersPage() {
                               <span style={{ fontWeight: 700, color: 'var(--text-1)' }}>{sym}{item.finalPrice.toFixed(2)}</span>
                             ) : (
                               <input
-                                type="number" min={0} value={item.finalPrice}
-                                onChange={e => setFinalPrice(item.productId, parseFloat(e.target.value) || 0)}
+                                inputMode="decimal" min={0} value={item.finalPrice}
+                                onChange={e => setFinalPrice(item.productId, parseFloat(e.target.value.replace(',', '.')) || 0)}
                                 style={{ width: 110, padding: '4px 8px', background: 'var(--surface-3)', border: '1px solid var(--or)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}
                               />
                             )}
