@@ -4,7 +4,7 @@ import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Product, Category } from '@/types';
+import type { Product, Category, ProductVariant } from '@/types';
 import {
   IconPlus, IconSearch, IconEdit, IconTrash, IconPhoto, IconCamera, IconX, IconRefresh,
   IconDownload, IconScan, IconCopy, IconUpload, IconTemplate,
@@ -107,6 +107,11 @@ export default function ProductsPage() {
   const [bulkField, setBulkField] = useState<'list' | 'cost'>('list');
   const [bulkValue, setBulkValue] = useState('');
   const [bulkSaving, setBulkSaving] = useState(false);
+  // Varyantlar
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [varSize, setVarSize] = useState('');
+  const [varColor, setVarColor] = useState('');
+  const [varStock, setVarStock] = useState('');
   // --- Category mapping (import) ---
   type CatMapping = { importName: string; suggestion: string; selected: string };
   const [catMappingOpen, setCatMappingOpen] = useState(false);
@@ -162,10 +167,14 @@ export default function ProductsPage() {
     return '';
   }
 
+  function resetVariantInputs() { setVarSize(''); setVarColor(''); setVarStock(''); }
+
   function openAdd(prefillBarcode?: string) {
     setEditing(null);
     setBarcodeError('');
     setForm({ ...empty, barcode: prefillBarcode ?? generateBarcode(products) });
+    setVariants([]);
+    resetVariantInputs();
     setCodeManual(false);
     setListManual(false);
     setOpen(true);
@@ -336,6 +345,8 @@ export default function ProductsPage() {
       cost: p.cost ?? 0, costUsd: p.costUsd ?? 0, list: p.list ?? 0, stock: p.stock ?? 0,
       photo: p.photo || '', catName: p.catName || '',
     });
+    setVariants(p.variants ? [...p.variants] : []);
+    resetVariantInputs();
     setCodeManual(true);
     setListManual(true);
     setOpen(true);
@@ -351,6 +362,8 @@ export default function ProductsPage() {
       cost: p.cost ?? 0, costUsd: p.costUsd ?? 0, list: p.list ?? 0, stock: 0,
       photo: p.photo || '', catName: p.catName || '',
     });
+    setVariants(p.variants ? p.variants.map(v => ({ ...v })) : []);
+    resetVariantInputs();
     setCodeManual(!newCode);
     setListManual(true);
     setOpen(true);
@@ -387,10 +400,15 @@ export default function ProductsPage() {
     setBarcodeError('');
     setSaving(true);
     try {
+      // Varyant varsa stok = varyant stoklarının toplamı
+      const totalStock = variants.length > 0
+        ? variants.reduce((s, v) => s + (v.stock || 0), 0)
+        : form.stock;
+      const payload = { ...form, stock: totalStock, variants: variants.length > 0 ? variants : [] };
       if (editing?.id) {
-        await updateDoc(doc(db, 'products', editing.id), { ...form });
+        await updateDoc(doc(db, 'products', editing.id), payload);
       } else {
-        await addDoc(collection(db, 'products'), { ...form, createdAt: serverTimestamp() });
+        await addDoc(collection(db, 'products'), { ...payload, createdAt: serverTimestamp() });
       }
       setOpen(false);
       load();
@@ -651,7 +669,14 @@ export default function ProductsPage() {
                           : <div style={{ width: 56, height: 56, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconPhoto size={22} color="var(--text-3)" /></div>
                         }
                       </td>
-                      <td style={{ fontWeight: 600 }}>{p.name}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        {p.name}
+                        {p.variants && p.variants.length > 0 && (
+                          <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(139,92,246,.12)', color: '#8B5CF6', padding: '2px 7px', borderRadius: 5, fontWeight: 700, verticalAlign: 'middle' }}>
+                            {p.variants.length} varyant
+                          </span>
+                        )}
+                      </td>
                       <td>{p.code ? <code style={{ background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 4, fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{p.code}</code> : <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                       <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{p.barcode || '—'}</td>
                       <td>{p.catName ? <span className="badge badge-blue">{p.catName}</span> : '—'}</td>
@@ -711,6 +736,15 @@ export default function ProductsPage() {
                     <span style={{ color: 'var(--text-3)' }}>Liste: <strong style={{ color: 'var(--text-1)' }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</strong></span>
                     <span style={{ color: 'var(--text-3)' }}>Stok: <strong style={{ color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</strong></span>
                   </div>
+                  {p.variants && p.variants.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
+                      {p.variants.map((v, i) => (
+                        <span key={i} style={{ fontSize: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 5, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
+                          {v.size} · {v.color} <span style={{ color: 'var(--text-3)' }}>({v.stock})</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)}><IconEdit size={13} /></button>
@@ -953,12 +987,119 @@ export default function ProductsPage() {
                   })()}
                 </div>
               </div>
-              <div className="form-row-3" style={{ marginTop: 0 }}>
-                <div className="form-group">
-                  <label className="form-label">Stok Adedi</label>
-                  <input className="form-input" type="number" min={0} value={form.stock} onFocus={selectAll} onChange={e => set('stock', parseInt(e.target.value) || 0)} />
+              {variants.length === 0 && (
+                <div className="form-row-3" style={{ marginTop: 0 }}>
+                  <div className="form-group">
+                    <label className="form-label">Stok Adedi</label>
+                    <input className="form-input" type="number" min={0} value={form.stock} onFocus={selectAll} onChange={e => set('stock', parseInt(e.target.value) || 0)} />
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Varyantlar */}
+            <div style={{ borderTop: '1px solid var(--border)', padding: '14px 18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>
+                  Beden / Renk Varyantları
+                </label>
+                {variants.length > 0 && (
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                    Toplam stok: <strong style={{ color: 'var(--text-1)' }}>{variants.reduce((s, v) => s + (v.stock || 0), 0)}</strong>
+                  </span>
+                )}
               </div>
+
+              {/* Varyant ekleme satırı */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: variants.length > 0 ? 10 : 0 }}>
+                <input
+                  className="form-input"
+                  placeholder="Beden (S, M, L, 38…)"
+                  value={varSize}
+                  onChange={e => setVarSize(e.target.value)}
+                  style={{ flex: 1, height: 36 }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && varSize && varColor) {
+                      e.preventDefault();
+                      const stock = parseInt(varStock) || 0;
+                      setVariants(v => [...v, { size: varSize.trim(), color: varColor.trim(), stock }]);
+                      resetVariantInputs();
+                    }
+                  }}
+                />
+                <input
+                  className="form-input"
+                  placeholder="Renk (Siyah, Kırmızı…)"
+                  value={varColor}
+                  onChange={e => setVarColor(e.target.value)}
+                  style={{ flex: 1, height: 36 }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && varSize && varColor) {
+                      e.preventDefault();
+                      const stock = parseInt(varStock) || 0;
+                      setVariants(v => [...v, { size: varSize.trim(), color: varColor.trim(), stock }]);
+                      resetVariantInputs();
+                    }
+                  }}
+                />
+                <input
+                  className="form-input"
+                  type="number" min={0}
+                  placeholder="Stok"
+                  value={varStock}
+                  onChange={e => setVarStock(e.target.value)}
+                  onFocus={selectAll}
+                  style={{ width: 72, height: 36 }}
+                />
+                <button
+                  type="button"
+                  disabled={!varSize.trim() || !varColor.trim()}
+                  onClick={() => {
+                    const stock = parseInt(varStock) || 0;
+                    setVariants(v => [...v, { size: varSize.trim(), color: varColor.trim(), stock }]);
+                    resetVariantInputs();
+                  }}
+                  style={{
+                    height: 36, padding: '0 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: varSize.trim() && varColor.trim() ? 'var(--or)' : 'var(--surface-3)',
+                    color: varSize.trim() && varColor.trim() ? '#fff' : 'var(--text-3)',
+                    fontWeight: 700, fontSize: 18, flexShrink: 0, transition: 'all .15s',
+                  }}
+                >+</button>
+              </div>
+
+              {/* Varyant listesi */}
+              {variants.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {variants.map((v, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'var(--surface-2)', borderRadius: 8, padding: '7px 10px',
+                    }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', minWidth: 60 }}>{v.size}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-2)', flex: 1 }}>{v.color}</span>
+                      <input
+                        type="number" min={0}
+                        value={v.stock}
+                        onChange={e => setVariants(prev => prev.map((x, j) => j === i ? { ...x, stock: parseInt(e.target.value) || 0 } : x))}
+                        onFocus={selectAll}
+                        style={{
+                          width: 64, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-2)',
+                          background: 'var(--surface-3)', color: 'var(--text-1)', fontSize: 13, textAlign: 'center',
+                        }}
+                      />
+                      <span style={{ fontSize: 11, color: 'var(--text-3)' }}>adet</span>
+                      <button
+                        type="button"
+                        onClick={() => setVariants(prev => prev.filter((_, j) => j !== i))}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#F87171', padding: 2 }}
+                      >
+                        <IconX size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Footer */}
