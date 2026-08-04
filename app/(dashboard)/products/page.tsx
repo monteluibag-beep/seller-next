@@ -102,6 +102,7 @@ export default function ProductsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkType, setBulkType] = useState<'percent' | 'amount'>('percent');
+  const [bulkField, setBulkField] = useState<'list' | 'cost'>('list');
   const [bulkValue, setBulkValue] = useState('');
   const [bulkSaving, setBulkSaving] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -219,6 +220,26 @@ export default function ProductsPage() {
         return result;
       }
 
+      // Header satırından sütun indekslerini tespit et
+      const headerCols = parseRow(lines[0]).map(h => h.replace(/^"|"$/g, '').toLowerCase().trim());
+      function colIdx(keywords: string[]): number {
+        return headerCols.findIndex(h => keywords.every(k => h.includes(k)));
+      }
+      const CI = {
+        name:    colIdx(['ad']) !== -1 ? colIdx(['ad']) : 0,
+        cat:     colIdx(['kategori']),
+        desc:    colIdx(['açıklama']),
+        code:    colIdx(['stok kodu']) !== -1 ? colIdx(['stok kodu']) : colIdx(['kod']),
+        barcode: colIdx(['barkod']),
+        cost:    colIdx(['maliyet']),
+        list:    colIdx(['liste', '₺']) !== -1 ? colIdx(['liste', '₺']) : colIdx(['liste fiyatı']),
+        listUsd: colIdx(['liste', '$']) !== -1 ? colIdx(['liste', '$']) : -1,
+        stock:   colIdx(['stok adedi']) !== -1 ? colIdx(['stok adedi']) : colIdx(['stok']),
+      };
+
+      const get = (cols: string[], idx: number) =>
+        idx >= 0 ? (cols[idx] ?? '').replace(/^"|"$/g, '').trim() : '';
+
       const dataLines = lines.filter((_, i) => i > 0); // skip header row
       let added = 0, skipped = 0;
       const currentProducts = [...products];
@@ -226,18 +247,19 @@ export default function ProductsPage() {
       for (const line of dataLines) {
         if (!line.trim()) continue;
         const cols = parseRow(line);
-        const name = cols[0]?.replace(/^"|"$/g, '').trim();
+        const name = get(cols, CI.name);
         if (!name) { skipped++; continue; }
 
-        const catName     = cols[1]?.replace(/^"|"$/g, '').trim() || '';
-        const description = cols[2]?.replace(/^"|"$/g, '').trim() || '';
-        let   code        = cols[3]?.replace(/^"|"$/g, '').trim() || '';
-        let   barcode     = cols[4]?.replace(/^"|"$/g, '').trim() || '';
-        const costUsd     = parseFloat(cols[5] || '0') || 0;
-        const listRaw     = parseFloat(cols[6] || '0');
-        const list        = listRaw > 0 ? listRaw : 0;
-        const listUsd     = parseFloat(cols[7] || '0') || 0;
-        const stock       = parseInt(cols[8] || '0') || 0;
+        const catName     = get(cols, CI.cat);
+        const description = get(cols, CI.desc);
+        let   code        = get(cols, CI.code);
+        let   barcode     = get(cols, CI.barcode);
+        const costUsd     = parseFloat(get(cols, CI.cost) || '0') || 0;
+        const listRaw     = parseFloat(get(cols, CI.list) || '0');
+        // Liste fiyatı boşsa maliyet üzerinden otomatik hesapla
+        const list        = listRaw > 0 ? listRaw : recommendedList(costUsd * usdRate);
+        const listUsd     = parseFloat(get(cols, CI.listUsd) || '0') || 0;
+        const stock       = parseInt(get(cols, CI.stock) || '0') || 0;
 
         // Auto-generate barcode if missing or duplicate
         if (!barcode || currentProducts.some(p => p.barcode === barcode)) {
@@ -386,21 +408,30 @@ export default function ProductsPage() {
       selected.forEach(id => {
         const p = products.find(x => x.id === id);
         if (!p) return;
-        let newList: number;
-        if (bulkType === 'percent') {
-          newList = Math.round(p.list * (1 + val / 100));
+        if (bulkField === 'cost') {
+          // Maliyet ($) güncelle — sadece tutar olarak
+          const currentCostUsd = p.costUsd ?? 0;
+          const newCostUsd = Math.max(0, currentCostUsd + val);
+          const newList = recommendedList(newCostUsd * usdRate);
+          batch.update(doc(db, 'products', id), { costUsd: newCostUsd, list: newList });
         } else {
-          newList = Math.round(p.list + val);
+          // Liste fiyatı güncelle
+          let newList: number;
+          if (bulkType === 'percent') {
+            newList = Math.round(p.list * (1 + val / 100));
+          } else {
+            newList = Math.round(p.list + val);
+          }
+          if (newList < 0) newList = 0;
+          batch.update(doc(db, 'products', id), { list: newList });
         }
-        if (newList < 0) newList = 0;
-        batch.update(doc(db, 'products', id), { list: newList });
       });
       await batch.commit();
       setBulkOpen(false);
       setBulkValue('');
       setSelected(new Set());
       load();
-      showToast(`✅ ${selected.size} ürünün liste fiyatı güncellendi`);
+      showToast(`✅ ${selected.size} ürün güncellendi`);
     } finally {
       setBulkSaving(false);
     }
@@ -858,26 +889,42 @@ export default function ProductsPage() {
             </div>
             <div style={{ padding: '16px 18px' }}>
               <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 14 }}>
-                {selected.size} ürünün liste fiyatı güncellenecek
+                {selected.size} ürün güncellenecek
               </div>
 
-              {/* Yüzde / Tutar seçimi */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-                {(['percent', 'amount'] as const).map(t => (
-                  <button key={t} onClick={() => setBulkType(t)} style={{
-                    padding: '10px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13,
-                    border: `2px solid ${bulkType === t ? 'var(--or)' : 'var(--border-2)'}`,
-                    background: bulkType === t ? 'var(--or-tint)' : 'transparent',
-                    color: bulkType === t ? 'var(--or)' : 'var(--text-2)',
-                  }}>
-                    {t === 'percent' ? '% Yüzde' : '₺ Tutar'}
-                  </button>
+              {/* Alan seçimi: Liste Fiyatı / Maliyet */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                {([['list', '₺ Liste Fiyatı'], ['cost', '$ Maliyet']] as const).map(([f, label]) => (
+                  <button key={f} onClick={() => { setBulkField(f); setBulkValue(''); }} style={{
+                    padding: '9px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                    border: `2px solid ${bulkField === f ? 'var(--or)' : 'var(--border-2)'}`,
+                    background: bulkField === f ? 'var(--or-tint)' : 'transparent',
+                    color: bulkField === f ? 'var(--or)' : 'var(--text-2)',
+                  }}>{label}</button>
                 ))}
               </div>
 
+              {/* Yüzde / Tutar seçimi — sadece liste fiyatında */}
+              {bulkField === 'list' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                  {(['percent', 'amount'] as const).map(t => (
+                    <button key={t} onClick={() => setBulkType(t)} style={{
+                      padding: '8px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                      border: `1.5px solid ${bulkType === t ? 'var(--or)' : 'var(--border-2)'}`,
+                      background: bulkType === t ? 'var(--or-tint)' : 'transparent',
+                      color: bulkType === t ? 'var(--or)' : 'var(--text-2)',
+                    }}>
+                      {t === 'percent' ? '% Yüzde' : '₺ Tutar'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label">
-                  {bulkType === 'percent' ? 'Yüzde Değişim (+ artış, - indirim)' : 'Tutar Değişim (+ artış, - indirim)'}
+                  {bulkField === 'cost'
+                    ? 'Dolar Değişim (+ artış, - azalma)'
+                    : bulkType === 'percent' ? 'Yüzde Değişim (+ artış, - indirim)' : 'Tutar Değişim (+ artış, - indirim)'}
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <input
@@ -885,12 +932,12 @@ export default function ProductsPage() {
                     type="number"
                     value={bulkValue}
                     onChange={e => setBulkValue(e.target.value)}
-                    placeholder={bulkType === 'percent' ? 'örn: 10 veya -5' : 'örn: 50 veya -20'}
+                    placeholder={bulkField === 'cost' ? 'örn: 2 veya -1.5' : bulkType === 'percent' ? 'örn: 10 veya -5' : 'örn: 50 veya -20'}
                     style={{ fontSize: 20, fontWeight: 700, textAlign: 'center' }}
                     onFocus={e => e.target.select()}
                   />
                   <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-3)', flexShrink: 0 }}>
-                    {bulkType === 'percent' ? '%' : '₺'}
+                    {bulkField === 'cost' ? '$' : bulkType === 'percent' ? '%' : '₺'}
                   </span>
                 </div>
               </div>
@@ -898,13 +945,21 @@ export default function ProductsPage() {
               {/* Önizleme */}
               {bulkValue && !isNaN(parseFloat(bulkValue)) && (
                 <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>
-                  <strong>Örnek:</strong> ₺100 liste fiyatı →{' '}
-                  <strong style={{ color: 'var(--or)' }}>
-                    ₺{bulkType === 'percent'
-                      ? Math.round(100 * (1 + parseFloat(bulkValue) / 100))
-                      : Math.round(100 + parseFloat(bulkValue))
-                    }
-                  </strong>
+                  {bulkField === 'cost' ? (
+                    <>
+                      <strong>Örnek:</strong> $10 maliyet → <strong style={{ color: 'var(--or)' }}>${Math.max(0, 10 + parseFloat(bulkValue)).toFixed(2)}</strong>
+                      {' '}· Liste: <strong style={{ color: 'var(--or)' }}>₺{recommendedList(Math.max(0, 10 + parseFloat(bulkValue)) * usdRate).toLocaleString('tr-TR')}</strong>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Örnek:</strong> ₺100 liste fiyatı →{' '}
+                      <strong style={{ color: 'var(--or)' }}>
+                        ₺{bulkType === 'percent'
+                          ? Math.round(100 * (1 + parseFloat(bulkValue) / 100))
+                          : Math.round(100 + parseFloat(bulkValue))}
+                      </strong>
+                    </>
+                  )}
                 </div>
               )}
             </div>
