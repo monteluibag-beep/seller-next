@@ -106,6 +106,11 @@ export default function ProductsPage() {
   const [bulkField, setBulkField] = useState<'list' | 'cost'>('list');
   const [bulkValue, setBulkValue] = useState('');
   const [bulkSaving, setBulkSaving] = useState(false);
+  // --- Category mapping (import) ---
+  type CatMapping = { importName: string; suggestion: string; selected: string };
+  const [catMappingOpen, setCatMappingOpen] = useState(false);
+  const [catMappings, setCatMappings] = useState<CatMapping[]>([]);
+  const [pendingRows, setPendingRows] = useState<Record<string, unknown>[]>([]);
   const photoRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const { rates } = useRates();
@@ -195,6 +200,32 @@ export default function ProductsPage() {
     XLSX.writeFile(wb, 'urun_iceri_aktar_taslak.xlsx');
   }
 
+  function getImportCol(row: Record<string, unknown>, keyword: string): string {
+    const key = Object.keys(row).find(k => k.toLowerCase().includes(keyword.toLowerCase()));
+    return key ? String(row[key] ?? '').trim() : '';
+  }
+
+  // Basit benzerlik skoru — ortak karakter sayısı / max uzunluk
+  function similarityScore(a: string, b: string): number {
+    const sa = a.toLowerCase(), sb = b.toLowerCase();
+    if (sa === sb) return 1;
+    let common = 0;
+    for (const ch of sa) if (sb.includes(ch)) common++;
+    return common / Math.max(sa.length, sb.length, 1);
+  }
+
+  function bestCatMatch(importName: string): string {
+    if (!importName) return '';
+    const exact = categories.find(c => c.name.toLowerCase() === importName.toLowerCase());
+    if (exact) return exact.name;
+    let best = '', bestScore = 0;
+    for (const c of categories) {
+      const score = similarityScore(importName, c.name);
+      if (score > bestScore) { bestScore = score; best = c.name; }
+    }
+    return bestScore > 0.4 ? best : '';
+  }
+
   async function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -208,61 +239,86 @@ export default function ProductsPage() {
 
       if (jsonRows.length === 0) { showToast('⚠️ Dosyada veri satırı bulunamadı'); return; }
 
-      function getCol(row: Record<string, unknown>, keyword: string): string {
-        const key = Object.keys(row).find(k => k.toLowerCase().includes(keyword.toLowerCase()));
-        return key ? String(row[key] ?? '').trim() : '';
-      }
-
-      let added = 0, skipped = 0;
-      const currentProducts = [...products];
-
+      // Tanınmayan kategorileri tespit et
+      const unknownCats = new Set<string>();
       for (const row of jsonRows) {
-        const name = getCol(row, 'ürün adı') || getCol(row, 'ad');
-        if (!name) { skipped++; continue; }
-
-        const catName     = getCol(row, 'kategori');
-        const description = getCol(row, 'açıklama');
-        let   code        = getCol(row, 'stok kodu') || getCol(row, 'kod');
-        let   barcode     = getCol(row, 'barkod');
-        const costUsd     = parseFloat(getCol(row, 'maliyet ($)') || getCol(row, 'maliyet') || '0') || 0;
-        const listRaw     = parseFloat(getCol(row, 'liste fiyatı (₺)') || getCol(row, 'liste') || '0');
-        const list        = listRaw > 0 ? listRaw : recommendedList(costUsd * usdRate);
-        const listUsd     = parseFloat(getCol(row, 'liste fiyatı ($)') || '0') || 0;
-        const stock       = parseInt(getCol(row, 'stok') || '0') || 0;
-
-        // Auto-generate barcode if missing or duplicate
-        if (!barcode || currentProducts.some(p => p.barcode === barcode)) {
-          barcode = generateBarcode(currentProducts);
-        }
-        // Auto-generate code: önce kategori prefix, yoksa ürün adının ilk 3 harfi
-        if (!code) {
-          const cat = categories.find(c => c.name === catName);
-          if (cat?.prefix) {
-            code = generateCode(cat.prefix, currentProducts, catName);
-          } else {
-            code = generateCodeFromName(name, currentProducts);
-          }
-        }
-
-        const payload: Record<string, unknown> = {
-          name, catName, code, barcode, cost: 0, list, stock, photo: '', createdAt: serverTimestamp(),
-        };
-        if (description) payload.description = description;
-        if (costUsd > 0) payload.costUsd = costUsd;
-        if (listUsd > 0) payload.listUsd = listUsd;
-
-        const newDoc = await addDoc(collection(db, 'products'), payload);
-        currentProducts.push({ id: newDoc.id, name, catName, code, barcode, cost: 0, costUsd, list, listUsd, stock, photo: '', description });
-        added++;
+        const catName = getImportCol(row, 'kategori');
+        if (!catName) continue;
+        const exists = categories.some(c => c.name.toLowerCase() === catName.toLowerCase());
+        if (!exists) unknownCats.add(catName);
       }
 
-      await load();
-      showToast(`✅ ${added} ürün eklendi${skipped > 0 ? `, ${skipped} satır atlandı` : ''}`);
+      if (unknownCats.size > 0) {
+        // Öneri üret ve mapping modal'ı aç
+        const mappings: CatMapping[] = Array.from(unknownCats).map(importName => ({
+          importName,
+          suggestion: bestCatMatch(importName),
+          selected: bestCatMatch(importName) || '__new__',
+        }));
+        setPendingRows(jsonRows);
+        setCatMappings(mappings);
+        setCatMappingOpen(true);
+        return; // doImport mapping onayı sonrası çağrılacak
+      }
+
+      await doImport(jsonRows, []);
     } catch {
       showToast('⚠️ Dosya okunamadı, lütfen taslak formatını kullanın');
     } finally {
       setImporting(false);
     }
+  }
+
+  async function doImport(jsonRows: Record<string, unknown>[], mappings: CatMapping[]) {
+    let added = 0, skipped = 0;
+    const currentProducts = [...products];
+
+    for (const row of jsonRows) {
+      const name = getImportCol(row, 'ürün adı') || getImportCol(row, 'ad');
+      if (!name) { skipped++; continue; }
+
+      let catName = getImportCol(row, 'kategori');
+      // Eşleştirme uygula
+      const mapping = mappings.find(m => m.importName.toLowerCase() === catName.toLowerCase());
+      if (mapping) {
+        catName = mapping.selected === '__new__' ? mapping.importName : mapping.selected;
+      }
+
+      const description = getImportCol(row, 'açıklama');
+      let   code        = getImportCol(row, 'stok kodu') || getImportCol(row, 'kod');
+      let   barcode     = getImportCol(row, 'barkod');
+      const costUsd     = parseFloat(getImportCol(row, 'maliyet ($)') || getImportCol(row, 'maliyet') || '0') || 0;
+      const listRaw     = parseFloat(getImportCol(row, 'liste fiyatı (₺)') || getImportCol(row, 'liste') || '0');
+      const list        = listRaw > 0 ? listRaw : recommendedList(costUsd * usdRate);
+      const listUsd     = parseFloat(getImportCol(row, 'liste fiyatı ($)') || '0') || 0;
+      const stock       = parseInt(getImportCol(row, 'stok') || '0') || 0;
+
+      if (!barcode || currentProducts.some(p => p.barcode === barcode)) {
+        barcode = generateBarcode(currentProducts);
+      }
+      if (!code) {
+        const cat = categories.find(c => c.name === catName);
+        if (cat?.prefix) {
+          code = generateCode(cat.prefix, currentProducts, catName);
+        } else {
+          code = generateCodeFromName(name, currentProducts);
+        }
+      }
+
+      const payload: Record<string, unknown> = {
+        name, catName, code, barcode, cost: 0, list, stock, photo: '', createdAt: serverTimestamp(),
+      };
+      if (description) payload.description = description;
+      if (costUsd > 0) payload.costUsd = costUsd;
+      if (listUsd > 0) payload.listUsd = listUsd;
+
+      const newDoc = await addDoc(collection(db, 'products'), payload);
+      currentProducts.push({ id: newDoc.id, name, catName, code, barcode, cost: 0, costUsd, list, listUsd, stock, photo: '', description });
+      added++;
+    }
+
+    await load();
+    showToast(`✅ ${added} ürün eklendi${skipped > 0 ? `, ${skipped} satır atlandı` : ''}`);
   }
 
   function openEdit(p: Product) {
@@ -951,6 +1007,72 @@ export default function ProductsPage() {
           onDetect={handleScanDetect}
           onClose={() => setScanTarget(null)}
         />
+      )}
+
+      {/* Kategori Eşleştirme Modalı */}
+      {catMappingOpen && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setCatMappingOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 500 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 18px 14px', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700 }}>Kategori Eşleştirme</h3>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                  Dosyada tanımadığım kategoriler var. Her biri için eşleştirme seçin.
+                </div>
+              </div>
+              <button onClick={() => setCatMappingOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={20} /></button>
+            </div>
+            <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {catMappings.map((m, i) => (
+                <div key={m.importName} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--or)', background: 'var(--or-tint)', padding: '2px 8px', borderRadius: 4 }}>
+                      Dosyadan
+                    </span>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)' }}>{m.importName}</span>
+                  </div>
+                  <label style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, display: 'block' }}>Eşleştir →</label>
+                  <select
+                    className="form-input"
+                    value={m.selected}
+                    onChange={e => {
+                      const updated = [...catMappings];
+                      updated[i] = { ...updated[i], selected: e.target.value };
+                      setCatMappings(updated);
+                    }}
+                    style={{ fontSize: 13 }}
+                  >
+                    <option value="__new__">➕ Yeni kategori olarak ekle ({m.importName})</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}{m.suggestion === c.name ? ' ✓ (önerilen)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, padding: '4px 18px 16px' }}>
+              <button className="btn btn-secondary" onClick={() => setCatMappingOpen(false)}>İptal</button>
+              <button
+                className="btn btn-primary"
+                onClick={async () => {
+                  setCatMappingOpen(false);
+                  setImporting(true);
+                  try {
+                    await doImport(pendingRows, catMappings);
+                  } catch {
+                    showToast('⚠️ Aktarım sırasında hata oluştu');
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+              >
+                Onayla &amp; Aktar ({pendingRows.length} ürün)
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

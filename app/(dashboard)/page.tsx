@@ -2,11 +2,12 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle } from '@tabler/icons-react';
+import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool } from '@tabler/icons-react';
 import Link from 'next/link';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Product, Sale, Offer } from '@/types';
+import { useRates } from '@/hooks/useRates';
 
 const SalesCharts = dynamic(() => import('@/components/SalesCharts'), {
   ssr: false,
@@ -25,6 +26,14 @@ interface MonthData {
   gecenYil: number;
 }
 
+interface NoCostProduct {
+  id: string;
+  name: string;
+  catName: string;
+  costUsd: number;
+  list: number;
+}
+
 interface Stats {
   totalStock: number;
   productCount: number;
@@ -32,6 +41,8 @@ interface Stats {
   thisMonthCount: number;
   openOffers: number;
   lowStock: number;
+  noCostCount: number;
+  noCostProducts: NoCostProduct[];
   monthlyData: MonthData[];
   thisYearTotal: number;
   lastYearTotal: number;
@@ -52,9 +63,14 @@ function getTimestamp(ts: unknown): Date | null {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { rates } = useRates();
+  const usdRate = rates.USD || 1;
   const [dateStr, setDateStr] = useState('');
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  // İmalat fiyatı girişi
+  const [costInputs, setCostInputs] = useState<Record<string, string>>({});
+  const [savingCost, setSavingCost] = useState<string | null>(null);
 
   useEffect(() => {
     const d = new Date();
@@ -81,6 +97,14 @@ export default function DashboardPage() {
         const productCount = products.length;
         const lowStock = products.filter(p => (p.stock ?? 0) <= 5).length;
         const openOffers = offers.filter(o => o.status === 'pending').length;
+        const noCostProducts: NoCostProduct[] = products
+          .filter(p => !(p.cost && p.cost > 0) && !((p as Product & { costUsd?: number }).costUsd && (p as Product & { costUsd?: number }).costUsd! > 0))
+          .map(p => ({
+            id: p.id!, name: p.name, catName: p.catName || '',
+            costUsd: (p as Product & { costUsd?: number }).costUsd ?? 0,
+            list: p.list ?? 0,
+          }));
+        const noCostCount = noCostProducts.length;
 
         const now = new Date();
         const thisYear = now.getFullYear();
@@ -132,7 +156,8 @@ export default function DashboardPage() {
 
         setStats({
           totalStock, productCount, thisMonthSales, thisMonthCount,
-          openOffers, lowStock, monthlyData, thisYearTotal, lastYearTotal,
+          openOffers, lowStock, noCostCount, noCostProducts,
+          monthlyData, thisYearTotal, lastYearTotal,
         });
       } catch (err) {
         console.error('Dashboard stats error:', err);
@@ -142,6 +167,31 @@ export default function DashboardPage() {
     }
     loadStats();
   }, []);
+
+  function recommendedList(cost: number): number {
+    if (!cost || cost <= 0) return 0;
+    const raw = cost * 1.10 / 0.45;
+    return Math.ceil(raw / 5) * 5;
+  }
+
+  async function saveCost(productId: string) {
+    const raw = (costInputs[productId] || '').replace(',', '.');
+    const costUsd = parseFloat(raw);
+    if (!costUsd || isNaN(costUsd) || costUsd <= 0) return;
+    setSavingCost(productId);
+    try {
+      const newList = recommendedList(costUsd * usdRate);
+      await updateDoc(doc(db, 'products', productId), { costUsd, list: newList });
+      setStats(prev => {
+        if (!prev) return prev;
+        const updated = prev.noCostProducts.filter(p => p.id !== productId);
+        return { ...prev, noCostProducts: updated, noCostCount: updated.length };
+      });
+      setCostInputs(prev => { const n = { ...prev }; delete n[productId]; return n; });
+    } finally {
+      setSavingCost(null);
+    }
+  }
 
   return (
     <>
@@ -184,6 +234,12 @@ export default function DashboardPage() {
             <div className="stat-value">{loading ? '—' : stats?.lowStock ?? 0}</div>
             <div className="stat-sub">yenileme gerekli</div>
           </div>
+          <div className="stat-card" style={{ borderColor: 'rgba(139,92,246,.25)', background: 'rgba(139,92,246,.05)' }}>
+            <div className="stat-icon" style={{ background: 'rgba(139,92,246,.15)', color: '#8B5CF6' }}><IconTool size={20} /></div>
+            <div className="stat-label">İmalat Fiyatı Eksik</div>
+            <div className="stat-value" style={{ color: '#8B5CF6' }}>{loading ? '—' : stats?.noCostCount ?? 0}</div>
+            <div className="stat-sub">fiyat bekliyor</div>
+          </div>
         </div>
 
         {/* Charts */}
@@ -195,6 +251,83 @@ export default function DashboardPage() {
               { yil: String(new Date().getFullYear()), toplam: Math.round(stats.thisYearTotal) },
             ]}
           />
+        )}
+
+        {!loading && stats && stats.noCostProducts.length > 0 && (
+          <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(139,92,246,.2)' }}>
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <IconTool size={16} color="#8B5CF6" />
+                <div className="card-title" style={{ color: '#8B5CF6' }}>İmalat Fiyatı Bekleyen Ürünler</div>
+                <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(139,92,246,.12)', color: '#8B5CF6', padding: '2px 8px', borderRadius: 6 }}>
+                  {stats.noCostProducts.length}
+                </span>
+              </div>
+              <Link href="/products" className="btn btn-secondary btn-sm">→ Ürünler</Link>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ürün</th>
+                    <th>Kategori</th>
+                    <th>Liste Fiyatı</th>
+                    <th style={{ minWidth: 200 }}>Maliyet ($) Gir</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.noCostProducts.slice(0, 10).map(p => (
+                    <tr key={p.id}>
+                      <td style={{ fontWeight: 600 }}>{p.name}</td>
+                      <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{p.catName || '—'}</td>
+                      <td style={{ fontWeight: 600 }}>{p.list > 0 ? `₺${p.list.toLocaleString('tr-TR')}` : '—'}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <input
+                            inputMode="decimal"
+                            placeholder="örn: 150"
+                            value={costInputs[p.id] ?? ''}
+                            onChange={e => setCostInputs(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            onKeyDown={e => e.key === 'Enter' && saveCost(p.id)}
+                            style={{
+                              flex: 1, padding: '5px 10px', borderRadius: 7, fontSize: 13,
+                              border: '1.5px solid rgba(139,92,246,.35)', background: 'var(--surface-2)',
+                              color: 'var(--text-1)', outline: 'none',
+                            }}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>$</span>
+                          <button
+                            onClick={() => saveCost(p.id)}
+                            disabled={savingCost === p.id || !costInputs[p.id]}
+                            style={{
+                              padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                              background: costInputs[p.id] ? '#8B5CF6' : 'var(--surface-3)',
+                              color: costInputs[p.id] ? '#fff' : 'var(--text-3)',
+                              fontSize: 12, fontWeight: 700, transition: 'all .15s',
+                            }}
+                          >
+                            {savingCost === p.id ? '...' : 'Kaydet'}
+                          </button>
+                        </div>
+                        {costInputs[p.id] && !isNaN(parseFloat(costInputs[p.id].replace(',','.'))) && (
+                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>
+                            Tavsiye liste: ₺{recommendedList(parseFloat(costInputs[p.id].replace(',','.')) * usdRate).toLocaleString('tr-TR')}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {stats.noCostProducts.length > 10 && (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 12, padding: '10px' }}>
+                        +{stats.noCostProducts.length - 10} ürün daha · <Link href="/products" style={{ color: '#8B5CF6' }}>Ürünler sayfasında görüntüle</Link>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
 
         <div className="grid-2">
