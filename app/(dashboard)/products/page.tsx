@@ -107,6 +107,8 @@ export default function ProductsPage() {
   const [bulkField, setBulkField] = useState<'list' | 'cost'>('list');
   const [bulkValue, setBulkValue] = useState('');
   const [bulkSaving, setBulkSaving] = useState(false);
+  // Ürün detay kartı
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   // Varyantlar
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [varSize, setVarSize] = useState('');
@@ -658,9 +660,11 @@ export default function ProductsPage() {
                 </thead>
                 <tbody>
                   {filtered.map(p => (
-                    <tr key={p.id} style={{ background: selected.has(p.id!) ? 'rgba(232,93,4,.06)' : undefined }}>
+                    <tr key={p.id} onClick={() => setDetailProduct(p)} style={{ background: selected.has(p.id!) ? 'rgba(232,93,4,.06)' : undefined, cursor: 'pointer' }}>
                       <td style={{ width: 36 }}>
-                        <input type="checkbox" checked={selected.has(p.id!)} onChange={() => toggleSelect(p.id!)}
+                        <input type="checkbox" checked={selected.has(p.id!)}
+                          onClick={e => e.stopPropagation()}
+                          onChange={() => toggleSelect(p.id!)}
                           style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--or)' }} />
                       </td>
                       <td>
@@ -693,7 +697,7 @@ export default function ProductsPage() {
                       <td style={{ fontWeight: 700 }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</td>
                       <td><span style={{ fontWeight: 700, color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' }}>{p.stock}</span></td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
                           <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} title="Düzenle"><IconEdit size={13} /></button>
                           <button className="btn btn-secondary btn-sm" onClick={() => openCopy(p)} title="Kopyala" style={{ color: 'var(--or)' }}><IconCopy size={13} /></button>
                           <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.1)', color: '#F87171' }} onClick={() => remove(p.id!)} title="Sil"><IconTrash size={13} /></button>
@@ -713,7 +717,7 @@ export default function ProductsPage() {
             ) : filtered.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Ürün bulunamadı</div>
             ) : filtered.map(p => (
-              <div key={p.id} style={{ display: 'flex', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)', alignItems: 'center', background: selected.has(p.id!) ? 'rgba(232,93,4,.06)' : undefined }}>
+              <div key={p.id} onClick={() => setDetailProduct(p)} style={{ display: 'flex', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)', alignItems: 'center', background: selected.has(p.id!) ? 'rgba(232,93,4,.06)' : undefined, cursor: 'pointer' }}>
                 <input type="checkbox" checked={selected.has(p.id!)} onChange={() => toggleSelect(p.id!)}
                   style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, accentColor: 'var(--or)' }} />
                 {p.photo
@@ -1215,6 +1219,106 @@ export default function ProductsPage() {
           onClose={() => setScanTarget(null)}
         />
       )}
+
+      {/* Ürün Detay Kartı */}
+      {detailProduct && (() => {
+        const p = detailProduct;
+        const cost = effectiveCost(p);
+        const margin = cost > 0 && p.list > 0 ? (((p.list * 0.45) - cost) / cost * 100) : null;
+        return (
+          <div className="modal-overlay" onClick={() => setDetailProduct(null)}>
+            <div className="modal-box" style={{ maxWidth: 480, padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+
+              {/* Üst bant — turuncu aksan */}
+              <div style={{ background: 'linear-gradient(135deg, rgba(232,93,4,.12) 0%, rgba(232,93,4,.03) 100%)', borderBottom: '1px solid var(--border)', padding: '18px 20px', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                {/* Resim */}
+                <div style={{ flexShrink: 0 }}>
+                  {p.photo
+                    ? <img src={p.photo} alt={p.name} style={{ width: 90, height: 90, objectFit: 'contain', borderRadius: 12, background: '#fff', border: '1px solid var(--border)' }} />
+                    : <div style={{ width: 90, height: 90, background: 'var(--surface-2)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)' }}><IconPhoto size={32} color="var(--text-3)" /></div>
+                  }
+                </div>
+                {/* İsim + meta */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-1)', lineHeight: 1.3, marginBottom: 6 }}>{p.name}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {p.catName && <span className="badge badge-blue">{p.catName}</span>}
+                    {p.code && <code style={{ fontSize: 10, background: 'var(--surface-3)', padding: '2px 7px', borderRadius: 4, color: 'var(--text-2)' }}>{p.code}</code>}
+                    {p.variants && p.variants.length > 0 && (
+                      <span style={{ fontSize: 10, background: 'rgba(139,92,246,.12)', color: '#8B5CF6', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>{p.variants.length} varyant</span>
+                    )}
+                  </div>
+                  {p.description && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, lineHeight: 1.4 }}>{p.description}</div>}
+                </div>
+                <button onClick={() => setDetailProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0, padding: 2 }}><IconX size={18} /></button>
+              </div>
+
+              {/* Fiyat + Stok satırı */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+                {[
+                  { label: 'Maliyet', value: cost > 0 ? `₺${cost.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}` : '—', sub: p.costUsd ? `$${p.costUsd}` : undefined, color: 'var(--text-1)' },
+                  { label: 'Liste Fiyatı', value: `₺${(p.list ?? 0).toLocaleString('tr-TR')}`, sub: undefined, color: 'var(--or)' },
+                  { label: 'Stok', value: String(p.stock), sub: p.stock <= 5 ? 'Kritik' : p.stock <= 15 ? 'Düşük' : 'Yeterli', color: p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80' },
+                ].map(item => (
+                  <div key={item.label} style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>{item.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: item.color }}>{item.value}</div>
+                    {item.sub && <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>{item.sub}</div>}
+                  </div>
+                ))}
+              </div>
+
+              {/* Kâr marjı */}
+              {margin !== null && (
+                <div style={{ padding: '10px 20px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>%55 iskonto sonrası kâr marjı</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: margin >= 10 ? '#4ADE80' : '#F87171' }}>%{margin.toFixed(1)}</span>
+                  {margin < 10 && <span style={{ fontSize: 10, color: '#F87171' }}>⚠ Minimum %10 altında</span>}
+                </div>
+              )}
+
+              {/* Barkod */}
+              {p.barcode && (
+                <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Barkod</span>
+                  <code style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', letterSpacing: 1 }}>{p.barcode}</code>
+                </div>
+              )}
+
+              {/* Varyantlar */}
+              {p.variants && p.variants.length > 0 && (
+                <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>Varyantlar</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 6 }}>
+                    {p.variants.map((v, i) => (
+                      <div key={i} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px' }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{v.size}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 1 }}>{v.color}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: v.stock <= 0 ? '#F87171' : '#4ADE80', marginTop: 4 }}>{v.stock} adet</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Aksiyonlar */}
+              <div style={{ display: 'flex', gap: 8, padding: '14px 20px' }}>
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setDetailProduct(null); openEdit(p); }}>
+                  <IconEdit size={15} /> Düzenle
+                </button>
+                <button className="btn btn-secondary" style={{ flex: 1, color: 'var(--or)' }} onClick={() => { setDetailProduct(null); openCopy(p); }}>
+                  <IconCopy size={15} /> Kopyala
+                </button>
+                <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,.1)', color: '#F87171', padding: '0 16px' }}
+                  onClick={() => { setDetailProduct(null); remove(p.id!); }}>
+                  <IconTrash size={15} />
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Kategori Eşleştirme Modalı */}
       {catMappingOpen && (
