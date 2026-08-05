@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
@@ -205,14 +205,14 @@ export default function ProductsPage() {
     setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
   }
 
-  const filtered = products.filter(p => {
+  const filtered = useMemo(() => products.filter(p => {
     if (catFilter && p.catName !== catFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (p.name || '').toLowerCase().includes(q) ||
            (p.code || '').toLowerCase().includes(q) ||
            (p.barcode || '').includes(search);
-  });
+  }), [products, search, catFilter]);
 
   // Kategorileri ürünlerde kullanılma sırasına göre listele
   const usedCatNames = [...new Set(products.map(p => p.catName).filter(Boolean))];
@@ -390,7 +390,7 @@ export default function ProductsPage() {
       added++;
     }
 
-    await load();
+    setProducts([...currentProducts]);
     showToast(`✅ ${added} ürün eklendi${skipped > 0 ? `, ${skipped} satır atlandı` : ''}`);
   }
 
@@ -464,11 +464,12 @@ export default function ProductsPage() {
       const payload = { ...form, stock: totalStock, variants: variants.length > 0 ? variants : [] };
       if (editing?.id) {
         await updateDoc(doc(db, 'products', editing.id), payload);
+        setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, ...payload } : p));
       } else {
-        await addDoc(collection(db, 'products'), { ...payload, createdAt: serverTimestamp() });
+        const newDoc = await addDoc(collection(db, 'products'), { ...payload, createdAt: serverTimestamp() });
+        setProducts(prev => [...prev, { id: newDoc.id, ...payload } as Product]);
       }
       setOpen(false);
-      load();
     } finally {
       setSaving(false);
     }
@@ -502,8 +503,8 @@ export default function ProductsPage() {
 
   async function remove(id: string) {
     if (!confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
+    setProducts(prev => prev.filter(p => p.id !== id));
     await deleteDoc(doc(db, 'products', id));
-    load();
   }
 
   // Seçim fonksiyonları
@@ -528,8 +529,8 @@ export default function ProductsPage() {
     const batch = writeBatch(db);
     selected.forEach(id => batch.delete(doc(db, 'products', id)));
     await batch.commit();
+    setProducts(prev => prev.filter(p => !selected.has(p.id!)));
     setSelected(new Set());
-    load();
   }
 
   async function bulkPriceUpdate() {
@@ -560,11 +561,26 @@ export default function ProductsPage() {
         }
       });
       await batch.commit();
+      // optimistic: apply computed updates to local state
+      setProducts(prev => prev.map(p => {
+        if (!selected.has(p.id!)) return p;
+        if (bulkField === 'cost') {
+          const newCostUsd = Math.max(0, (p.costUsd ?? 0) + val);
+          const newList = recommendedList(newCostUsd * usdRate);
+          return { ...p, costUsd: newCostUsd, list: newList };
+        } else {
+          let newList: number;
+          if (bulkType === 'percent') newList = Math.round(p.list * (1 + val / 100));
+          else newList = Math.round(p.list + val);
+          if (newList < 0) newList = 0;
+          return { ...p, list: newList };
+        }
+      }));
+      const cnt = selected.size;
       setBulkOpen(false);
       setBulkValue('');
       setSelected(new Set());
-      load();
-      showToast(`✅ ${selected.size} ürün güncellendi`);
+      showToast(`✅ ${cnt} ürün güncellendi`);
     } finally {
       setBulkSaving(false);
     }
