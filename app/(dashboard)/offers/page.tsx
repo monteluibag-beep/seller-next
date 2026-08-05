@@ -324,16 +324,20 @@ export default function OffersPage() {
       const pdfBlob = pdf.output('blob');
       const file = new File([pdfBlob], filename, { type: 'application/pdf' });
 
+      const url = URL.createObjectURL(pdfBlob);
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: filename });
+        try {
+          await navigator.share({ files: [file], title: filename });
+        } catch {
+          // Kullanıcı iptal etti veya desteklenmiyor — PDF indir
+          const a = document.createElement('a');
+          a.href = url; a.download = filename; a.click();
+        }
       } else {
-        // Fallback: direkt indir
-        const url = URL.createObjectURL(pdfBlob);
         const a = document.createElement('a');
         a.href = url; a.download = filename; a.click();
-        URL.revokeObjectURL(url);
-        alert('Tarayıcınız dosya paylaşımını desteklemiyor. PDF indirildi, WhatsApp\'tan manuel ekleyebilirsiniz.');
       }
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (err) {
       console.error('PDF paylaşım hatası:', err);
       alert('PDF oluşturulamadı: ' + (err instanceof Error ? err.message : String(err)));
