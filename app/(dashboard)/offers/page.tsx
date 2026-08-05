@@ -280,67 +280,83 @@ export default function OffersPage() {
     }
   }
 
+  const [shareLoading, setShareLoading] = useState(false);
+
   async function sharePdfWhatsapp() {
-    if (!pdfPreview) return;
+    if (!pdfPreview || shareLoading) return;
     const offer = pdfPreview.offer;
     const filename = `Teklif-${offer.no}.pdf`;
+    setShareLoading(true);
 
     try {
-      // Teklif HTML'ini gizli div'e yükle, html2canvas ile yakala, jsPDF ile PDF yap
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-      ]);
+      const { default: jsPDF } = await import('jspdf');
+      const { default: html2canvas } = await import('html2canvas');
 
+      // Gizli container — ürün fotoğrafları CORS sorununu aşmak için crossOrigin ayarı
       const container = document.createElement('div');
-      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;';
+      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;z-index:-1;';
       const logo = await getLogoDataUrl();
       container.innerHTML = generateOfferHtml(offer, getFirmInfo(logo));
+
+      // Ürün img'lerini crossOrigin anonymous yap
+      container.querySelectorAll('img').forEach(img => {
+        img.crossOrigin = 'anonymous';
+      });
+
       document.body.appendChild(container);
+      await new Promise(r => setTimeout(r, 600));
 
-      await new Promise(r => setTimeout(r, 400)); // render bekle
-
-      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#fff' });
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 5000,
+        onclone: (doc) => {
+          // clone'daki img'lerin yüklenmesini bekle
+          doc.querySelectorAll('img').forEach((img: HTMLImageElement) => {
+            img.crossOrigin = 'anonymous';
+          });
+        },
+      });
       document.body.removeChild(container);
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const imgData = canvas.toDataURL('image/jpeg', 0.90);
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = (canvas.height * pdfW) / canvas.width;
-
-      // Çok uzunsa sayfalara böl
       const pageH = pdf.internal.pageSize.getHeight();
-      if (pdfH <= pageH) {
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+      const imgH = (canvas.height * pdfW) / canvas.width;
+
+      if (imgH <= pageH) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, imgH);
       } else {
-        let y = 0;
-        while (y < pdfH) {
-          if (y > 0) pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, -y, pdfW, pdfH);
-          y += pageH;
+        let remainY = 0;
+        while (remainY < imgH) {
+          if (remainY > 0) pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, -remainY, pdfW, imgH);
+          remainY += pageH;
         }
       }
 
       const pdfBlob = pdf.output('blob');
       const file = new File([pdfBlob], filename, { type: 'application/pdf' });
 
-      const url = URL.createObjectURL(pdfBlob);
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: filename });
-        } catch {
-          // Kullanıcı iptal etti veya desteklenmiyor — PDF indir
-          const a = document.createElement('a');
-          a.href = url; a.download = filename; a.click();
-        }
+        await navigator.share({ files: [file], title: filename });
       } else {
+        // Masaüstü fallback — indir
+        const url = URL.createObjectURL(pdfBlob);
         const a = document.createElement('a');
         a.href = url; a.download = filename; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
       }
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-    } catch (err) {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return; // kullanıcı iptal etti
       console.error('PDF paylaşım hatası:', err);
-      alert('PDF oluşturulamadı: ' + (err instanceof Error ? err.message : String(err)));
+      alert('PDF oluşturulamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setShareLoading(false);
     }
   }
 
@@ -915,15 +931,20 @@ export default function OffersPage() {
               {/* WhatsApp PDF Paylaş */}
               <button
                 onClick={sharePdfWhatsapp}
+                disabled={shareLoading}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5,
-                  background: '#25D366', color: '#fff',
+                  background: shareLoading ? '#128C4A' : '#25D366', color: '#fff',
                   border: 'none', borderRadius: 8, padding: '6px 12px',
-                  cursor: 'pointer', fontWeight: 600, fontSize: 13,
+                  cursor: shareLoading ? 'default' : 'pointer', fontWeight: 600, fontSize: 13,
+                  opacity: shareLoading ? 0.8 : 1,
                 }}
                 title="PDF olarak WhatsApp'ta Paylaş"
               >
-                <IconBrandWhatsapp size={15} /> <span className="btn-label">WhatsApp PDF</span>
+                {shareLoading
+                  ? <><IconLoader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> <span className="btn-label">Hazırlanıyor...</span></>
+                  : <><IconBrandWhatsapp size={15} /> <span className="btn-label">WhatsApp PDF</span></>
+                }
               </button>
 
               {/* Email */}
