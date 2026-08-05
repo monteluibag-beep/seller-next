@@ -12,6 +12,8 @@
     "@tabler/icons-react": "^3.44.0",
     "barcode-detector": "^3.2.0",
     "firebase": "^12.14.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy,
 } from 'firebase/firestore';
@@ -277,6 +277,66 @@ export default function OffersPage() {
       w.addEventListener('load', () => {
         setTimeout(() => w.print(), 300);
       });
+    }
+  }
+
+  async function sharePdfWhatsapp() {
+    if (!pdfPreview) return;
+    const offer = pdfPreview.offer;
+    const filename = `Teklif-${offer.no}.pdf`;
+
+    try {
+      // Teklif HTML'ini gizli div'e yükle, html2canvas ile yakala, jsPDF ile PDF yap
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
+      const container = document.createElement('div');
+      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;';
+      const logo = await getLogoDataUrl();
+      container.innerHTML = generateOfferHtml(offer, getFirmInfo(logo));
+      document.body.appendChild(container);
+
+      await new Promise(r => setTimeout(r, 400)); // render bekle
+
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#fff' });
+      document.body.removeChild(container);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = (canvas.height * pdfW) / canvas.width;
+
+      // Çok uzunsa sayfalara böl
+      const pageH = pdf.internal.pageSize.getHeight();
+      if (pdfH <= pageH) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+      } else {
+        let y = 0;
+        while (y < pdfH) {
+          if (y > 0) pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, -y, pdfW, pdfH);
+          y += pageH;
+        }
+      }
+
+      const pdfBlob = pdf.output('blob');
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+      } else {
+        // Fallback: direkt indir
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+        alert('Tarayıcınız dosya paylaşımını desteklemiyor. PDF indirildi, WhatsApp\'tan manuel ekleyebilirsiniz.');
+      }
+    } catch (err) {
+      console.error('PDF paylaşım hatası:', err);
+      alert('PDF oluşturulamadı: ' + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -848,18 +908,18 @@ export default function OffersPage() {
                 <IconPrinter size={14} /> <span className="btn-label">PDF Kaydet</span>
               </button>
 
-              {/* WhatsApp */}
+              {/* WhatsApp PDF Paylaş */}
               <button
-                onClick={whatsappFromPreview}
+                onClick={sharePdfWhatsapp}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5,
                   background: '#25D366', color: '#fff',
                   border: 'none', borderRadius: 8, padding: '6px 12px',
                   cursor: 'pointer', fontWeight: 600, fontSize: 13,
                 }}
-                title="WhatsApp'ta Paylaş"
+                title="PDF olarak WhatsApp'ta Paylaş"
               >
-                <IconBrandWhatsapp size={15} /> <span className="btn-label">WhatsApp</span>
+                <IconBrandWhatsapp size={15} /> <span className="btn-label">WhatsApp PDF</span>
               </button>
 
               {/* Email */}
