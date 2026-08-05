@@ -98,16 +98,20 @@ function InlineCell({ pid, field, ie, onStart, onSave, onCancel, onChange, child
   return (
     <td onClick={active ? undefined : onStart} style={{ cursor: 'text', fontWeight: fw ? 700 : undefined }}>
       {active ? (
-        <input
-          autoFocus
-          inputMode="decimal"
-          value={ie!.value}
-          onChange={e => onChange({ ...ie!, value: e.target.value })}
-          onBlur={() => onSave(ie!)}
-          onKeyDown={e => { if (e.key === 'Enter') onSave(ie!); if (e.key === 'Escape') onCancel(); }}
-          onClick={e => e.stopPropagation()}
-          style={{ width: w ?? (fw ? 90 : 80), padding: '3px 7px', borderRadius: 6, border: '2px solid var(--or)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 13, fontWeight: fw ? 700 : undefined, outline: 'none' }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
+          <input
+            autoFocus
+            inputMode="decimal"
+            value={ie!.value}
+            onChange={e => onChange({ ...ie!, value: e.target.value })}
+            onKeyDown={e => { if (e.key === 'Enter') onSave(ie!); if (e.key === 'Escape') onCancel(); }}
+            style={{ width: w ?? (fw ? 90 : 80), padding: '3px 7px', borderRadius: 6, border: '2px solid var(--or)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 13, fontWeight: fw ? 700 : undefined, outline: 'none' }}
+          />
+          <button onMouseDown={e => { e.preventDefault(); onSave(ie!); }}
+            style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✓</button>
+          <button onMouseDown={e => { e.preventDefault(); onCancel(); }}
+            style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'var(--surface-2)', color: 'var(--text-3)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+        </div>
       ) : children}
     </td>
   );
@@ -122,12 +126,16 @@ function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label,
   return (
     <span style={{ color: 'var(--text-3)', fontSize: 11 }}>{label}:&nbsp;
       {active ? (
-        <input autoFocus inputMode="decimal" value={ie!.value}
-          onChange={e => onChange({ ...ie!, value: e.target.value })}
-          onBlur={() => onSave(ie!)}
-          onKeyDown={e => { if (e.key === 'Enter') onSave(ie!); if (e.key === 'Escape') onCancel(); }}
-          onClick={e => e.stopPropagation()}
-          style={{ width: w, padding: '2px 6px', borderRadius: 5, border: '2px solid var(--or)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 12, outline: 'none' }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
+          <input autoFocus inputMode="decimal" value={ie!.value}
+            onChange={e => onChange({ ...ie!, value: e.target.value })}
+            onKeyDown={e => { if (e.key === 'Enter') onSave(ie!); if (e.key === 'Escape') onCancel(); }}
+            style={{ width: w, padding: '2px 6px', borderRadius: 5, border: '2px solid var(--or)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 12, outline: 'none' }} />
+          <button onMouseDown={e => { e.preventDefault(); onSave(ie!); }}
+            style={{ width: 24, height: 24, borderRadius: 5, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>✓</button>
+          <button onMouseDown={e => { e.preventDefault(); onCancel(); }}
+            style={{ width: 24, height: 24, borderRadius: 5, border: 'none', background: 'var(--surface-2)', color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </span>
       ) : (
         <strong onClick={onStart} style={{ color: color ?? 'var(--text-1)', borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>
           {children}
