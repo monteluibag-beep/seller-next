@@ -144,6 +144,8 @@ export default function ProductsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>(''); // '' = Tümü
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<Omit<Product, 'id'>>(empty);
@@ -219,6 +221,12 @@ export default function ProductsPage() {
            (p.code || '').toLowerCase().includes(q) ||
            (p.barcode || '').includes(search);
   }), [products, search, catFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // search veya filtre değişince 1. sayfaya dön
+  useEffect(() => { setPage(1); }, [search, catFilter]);
 
   // Kategorileri ürünlerde kullanılma sırasına göre listele
   const usedCatNames = [...new Set(products.map(p => p.catName).filter(Boolean))];
@@ -763,7 +771,7 @@ export default function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(p => (
+                  {paged.map(p => (
                     <tr key={p.id} onClick={() => setDetailProduct(p)} style={{ background: selected.has(p.id!) ? 'rgba(232,93,4,.06)' : undefined, cursor: 'pointer' }}>
                       <td style={{ width: 36 }}>
                         <input type="checkbox" checked={selected.has(p.id!)}
@@ -824,7 +832,7 @@ export default function ProductsPage() {
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
             ) : filtered.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Ürün bulunamadı</div>
-            ) : filtered.map(p => (
+            ) : paged.map(p => (
               <div key={p.id} onClick={() => setDetailProduct(p)} style={{ display: 'flex', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)', alignItems: 'center', background: selected.has(p.id!) ? 'rgba(232,93,4,.06)' : undefined, cursor: 'pointer' }}>
                 <input type="checkbox" checked={selected.has(p.id!)} onChange={() => toggleSelect(p.id!)}
                   style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, accentColor: 'var(--or)' }} />
@@ -867,6 +875,27 @@ export default function ProductsPage() {
               </div>
             ))}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', borderTop: '1px solid var(--border)' }}>
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', color: page === 1 ? 'var(--text-3)' : 'var(--text-1)', cursor: page === 1 ? 'default' : 'pointer', fontSize: 13 }}
+              >‹ Önceki</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                <button key={n} onClick={() => setPage(n)} style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: n === page ? 'var(--or)' : 'var(--card)', color: n === page ? '#fff' : 'var(--text-1)', cursor: 'pointer', fontWeight: n === page ? 700 : 400, fontSize: 13 }}>
+                  {n}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', color: page === totalPages ? 'var(--text-3)' : 'var(--text-1)', cursor: page === totalPages ? 'default' : 'pointer', fontSize: 13 }}
+              >Sonraki ›</button>
+            </div>
+          )}
         </div>
       </div>
 
