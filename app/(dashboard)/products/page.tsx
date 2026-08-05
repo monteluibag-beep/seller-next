@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
@@ -141,6 +141,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>(''); // '' = Tümü
   const [open, setOpen] = useState(false);
@@ -187,6 +188,11 @@ export default function ProductsPage() {
   }
 
   useEffect(() => { load(); loadCats(); }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 150);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -614,6 +620,7 @@ export default function ProductsPage() {
 
   function handleScanDetect(val: string) {
     if (scanTarget === 'search') {
+      setSearchInput(val);
       setSearch(val);
       setScanTarget(null);
     } else if (scanTarget === 'barcode') {
@@ -704,8 +711,8 @@ export default function ProductsPage() {
                   className="form-input"
                   style={{ paddingLeft: 32, paddingRight: 36, height: 36 }}
                   placeholder="İsim, kod veya barkod ara..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
                 />
               </div>
               <button
