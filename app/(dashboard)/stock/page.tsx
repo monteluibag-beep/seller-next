@@ -52,6 +52,7 @@ export default function StockPage() {
 
   // Product search for add-move modal
   const [productSearch, setProductSearch] = useState('');
+  const [lowStockOpen, setLowStockOpen] = useState(false);
 
   useEffect(() => { load(); loadProducts(); }, []);
 
@@ -394,11 +395,19 @@ export default function StockPage() {
 
       <div className="page-content">
         {lowStock.length > 0 && (
-          <div style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <IconAlertTriangle size={18} color="#DC2626" style={{ marginTop: 1, flexShrink: 0 }} />
-            <div>
-              <div style={{ fontWeight: 700, color: '#DC2626', fontSize: 13, marginBottom: 4 }}>Düşük Stok Uyarısı ({lowStock.length} ürün)</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ border: '1px solid rgba(239,68,68,.2)', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
+            <button
+              onClick={() => setLowStockOpen(o => !o)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'rgba(239,68,68,.08)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <IconAlertTriangle size={16} color="#DC2626" style={{ flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, color: '#DC2626', fontSize: 13, flex: 1 }}>
+                Düşük Stok Uyarısı — {lowStock.length} ürün
+              </span>
+              <span style={{ color: '#DC2626', fontSize: 16, lineHeight: 1 }}>{lowStockOpen ? '▲' : '▼'}</span>
+            </button>
+            {lowStockOpen && (
+              <div style={{ padding: '10px 16px 12px', background: 'rgba(239,68,68,.04)', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {lowStock.map(p => (
                   <span key={p.id} style={{
                     background: p.stock <= 3 ? 'rgba(239,68,68,.15)' : 'rgba(217,119,6,.12)',
@@ -409,7 +418,7 @@ export default function StockPage() {
                   </span>
                 ))}
               </div>
-            </div>
+            )}
           </div>
         )}
 
