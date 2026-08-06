@@ -37,8 +37,8 @@
   --border: rgba(0,0,0,.18);
   --border-2: rgba(0,0,0,.26);
   --text-1: #0a0a0a;
-  --text-2: rgba(0,0,0,.78);
-  --text-3: rgba(0,0,0,.50);
+  --text-2: #2a2a2a;
+  --text-3: #5a5a5a;
   --or-tint: rgba(232,93,4,.12);
   --nav-hover-bg: rgba(0,0,0,.06);
   --alpha-7: rgba(0,0,0,.07);
@@ -52,14 +52,16 @@
 /* Light modda yazı netliği */
 [data-theme="light"] body {
   -webkit-font-smoothing: auto;
-  font-weight: 420;
 }
 [data-theme="light"] .page-title { font-weight: 800; }
 [data-theme="light"] .card-title { font-weight: 800; }
 [data-theme="light"] table th { font-weight: 700; color: #0a0a0a; }
-[data-theme="light"] table td { color: #111111; }
+[data-theme="light"] table td { color: #0a0a0a; font-weight: 500; }
+[data-theme="light"] table code { color: #1a1a1a !important; background: #e4e4e6 !important; font-weight: 600; }
 [data-theme="light"] .nav-item { font-weight: 600; }
 [data-theme="light"] .stat-card { border-width: 1.5px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+[data-theme="light"] .badge { font-weight: 700; }
+[data-theme="light"] .page-sub { color: #4a4a4a; font-weight: 500; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
