@@ -61,6 +61,7 @@ function getDiscountRate(qty: number, tiers: DiscountTier[]): number {
 }
 
 function PriceModal({ products, onClose }: { products: Product[]; onClose: () => void }) {
+  const { rates } = useRates();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Product | null>(null);
   const [qty, setQty] = useState('1');
@@ -244,9 +245,14 @@ function PriceModal({ products, onClose }: { products: Product[]; onClose: () =>
               <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1 }}>
                 ₺{unitPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </div>
-              <div style={{ fontSize: 13, opacity: .75, marginTop: 6 }}>
+              <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 13, opacity: .85 }}>
+                <span>${(unitPrice / rates.USD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>€{(unitPrice / rates.EUR).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div style={{ fontSize: 12, opacity: .70, marginTop: 4 }}>
                 Toplam: ₺{totalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                {discRate === 0 && <span style={{ marginLeft: 8, fontSize: 11 }}>· İndirim yok</span>}
+                {' · '}${(totalPrice / rates.USD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {discRate === 0 && <span style={{ marginLeft: 8 }}>· İndirim yok</span>}
               </div>
             </div>
 

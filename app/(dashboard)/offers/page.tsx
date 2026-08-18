@@ -42,6 +42,7 @@ export default function OffersPage() {
   const [customer, setCustomer] = useState('');
   const [note, setNote] = useState('');
   const [currency, setCurrency] = useState<Currency>('TRY');
+  const prevCurrencyRef = useRef<Currency>('TRY');
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [items, setItems] = useState<OfferItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
@@ -95,6 +96,21 @@ export default function OffersPage() {
   function fromTRY(amount: number): number {
     if (currency === 'TRY') return amount;
     return amount / rates[currency as keyof typeof rates];
+  }
+
+  function changeCurrency(next: Currency) {
+    const prev = prevCurrencyRef.current;
+    prevCurrencyRef.current = next;
+    setCurrency(next);
+    if (items.length === 0) return;
+    // Önce eski currency'den TRY'ye, sonra TRY'den yeni currency'ye çevir
+    const prevRate = prev === 'TRY' ? 1 : rates[prev as keyof typeof rates];
+    const nextRate = next === 'TRY' ? 1 : rates[next as keyof typeof rates];
+    setItems(cur => cur.map(i => ({
+      ...i,
+      listPrice: parseFloat(((i.listPrice * prevRate) / nextRate).toFixed(2)),
+      finalPrice: parseFloat(((i.finalPrice * prevRate) / nextRate).toFixed(2)),
+    })));
   }
 
   const sym = CURRENCY_SYMBOLS[currency];
@@ -192,6 +208,7 @@ export default function OffersPage() {
     setCustomer(''); setNote(''); setItems([]);
     setDiscountEnabled(false); setProductSearch('');
     setCurrency('TRY');
+    prevCurrencyRef.current = 'TRY';
   }
 
   async function approve(id: string) {
@@ -561,7 +578,7 @@ export default function OffersPage() {
                   <select
                     className="form-input"
                     value={currency}
-                    onChange={e => setCurrency(e.target.value as Currency)}
+                    onChange={e => changeCurrency(e.target.value as Currency)}
                     style={{ paddingRight: 28, appearance: 'none', cursor: 'pointer', minWidth: 100 }}
                   >
                     <option value="TRY">₺ TRY</option>
