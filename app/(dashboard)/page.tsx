@@ -60,7 +60,7 @@ function getDiscountRate(qty: number, tiers: DiscountTier[]): number {
   return sorted.find(t => qty >= t.qty)?.rate ?? 0;
 }
 
-function PriceModal({ products, onClose }: { products: Product[]; onClose: () => void }) {
+function PriceModal({ products, onClose, role }: { products: Product[]; onClose: () => void; role: string | null }) {
   const { rates } = useRates();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Product | null>(null);
@@ -98,6 +98,12 @@ function PriceModal({ products, onClose }: { products: Product[]; onClose: () =>
   const discRate = selected ? getDiscountRate(qtyNum, tiers) : 0;
   const unitPrice = selected ? selected.list * (1 - discRate / 100) : 0;
   const totalPrice = unitPrice * qtyNum;
+
+  // Özel fiyat: costUsd * 1.25 (admin için)
+  const isAdmin = role === 'admin';
+  const ozelUnitUsd = selected?.costUsd ? selected.costUsd * 1.25 : null;
+  const ozelUnitTry = ozelUnitUsd ? ozelUnitUsd * rates.USD : null;
+  const ozelTotalUsd = ozelUnitUsd ? ozelUnitUsd * qtyNum : null;
 
   // Tüm tier basamakları — seçilen adet için hangisi uygulanıyor vurgu
   const sortedTiers = [...tiers].sort((a, b) => a.qty - b.qty);
@@ -255,6 +261,30 @@ function PriceModal({ products, onClose }: { products: Product[]; onClose: () =>
                 {discRate === 0 && <span style={{ marginLeft: 8 }}>· İndirim yok</span>}
               </div>
             </div>
+
+            {/* Özel Fiyat — sadece admin */}
+            {isAdmin && ozelUnitUsd && ozelUnitTry && (
+              <div style={{
+                border: '1.5px solid rgba(232,93,4,.4)',
+                borderRadius: 12, padding: '12px 16px', marginBottom: 16,
+                background: 'rgba(232,93,4,.06)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#E85D04', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 2 }}>Özel Fiyat</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>İmalat maliyeti × 1,25</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)' }}>
+                    ${ozelUnitUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 1 }}>
+                    ₺{ozelUnitTry.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                    {qtyNum > 1 && <> · Toplam ${ozelTotalUsd!.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* İskonto Kademeli Tablo */}
             {sortedTiers.length > 0 && (
@@ -478,7 +508,7 @@ function getTimestamp(ts: unknown): Date | null {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { rates } = useRates();
   const usdRate = rates.USD || 1;
   const [dateStr, setDateStr] = useState('');
@@ -765,7 +795,7 @@ export default function DashboardPage() {
         )}
 
         {/* Price Modal */}
-        {priceModal && <PriceModal products={allProducts} onClose={() => setPriceModal(false)} />}
+        {priceModal && <PriceModal products={allProducts} onClose={() => setPriceModal(false)} role={role} />}
 
         {/* Stock Modal */}
         {stockModal && <StockModal products={allProducts} onClose={() => setStockModal(false)} />}
