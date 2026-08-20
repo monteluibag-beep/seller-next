@@ -12,7 +12,7 @@ import {
   IconReceipt, IconFileText, IconTag, IconUsers,
   IconSettings, IconLogout, IconMenu2,
   IconChevronLeft, IconClipboardList, IconBuildingFactory2,
-  IconSun, IconMoon,
+  IconSun, IconMoon, IconBook2,
 } from '@tabler/icons-react';
 
 const ALL_NAV = [
@@ -21,6 +21,7 @@ const ALL_NAV = [
   { href: '/stock', label: 'Stoklar', icon: IconStack2, group: 'Yönetim', roles: ['admin', 'sales'] },
   { href: '/sales', label: 'Satışlar', icon: IconReceipt, group: 'Yönetim', roles: ['admin', 'sales'] },
   { href: '/offers', label: 'Teklifler', icon: IconFileText, group: 'Yönetim', roles: ['admin', 'sales'] },
+  { href: '/catalog', label: 'Katalog', icon: IconBook2, group: 'Yönetim', roles: ['admin', 'sales'] },
   { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, group: 'Yönetim', roles: ['admin', 'mudur', 'atolye', 'sales'] },
   { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, group: 'Yönetim', roles: ['admin', 'mudur'] },
   { href: '/categories', label: 'Kategoriler', icon: IconTag, group: 'Sistem', roles: ['admin'] },
