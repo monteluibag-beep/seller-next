@@ -103,8 +103,21 @@ function InlineCell({ pid, field, ie, onStart, onSave, onCancel, onChange, child
             autoFocus
             inputMode="decimal"
             value={ie!.value}
-            onChange={e => onChange({ ...ie!, value: e.target.value })}
-            onKeyDown={e => { if (e.key === 'Enter') onSave(ie!); if (e.key === 'Escape') onCancel(); }}
+            onChange={e => onChange({ ...ie!, value: e.target.value.replace('.', ',') })}
+            onKeyDown={e => {
+              if (e.key === '.' || e.key === ',') {
+                e.preventDefault();
+                const el = e.currentTarget;
+                const s = el.selectionStart ?? el.value.length;
+                const end = el.selectionEnd ?? s;
+                const newVal = el.value.slice(0, s) + ',' + el.value.slice(end);
+                onChange({ ...ie!, value: newVal });
+                requestAnimationFrame(() => el.setSelectionRange(s + 1, s + 1));
+                return;
+              }
+              if (e.key === 'Enter') onSave(ie!);
+              if (e.key === 'Escape') onCancel();
+            }}
             style={{ width: w ?? (fw ? 90 : 80), padding: '3px 7px', borderRadius: 6, border: '2px solid var(--or)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 13, fontWeight: fw ? 700 : undefined, outline: 'none' }}
           />
           <button onMouseDown={e => { e.preventDefault(); onSave(ie!); }}
@@ -128,8 +141,20 @@ function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label,
       {active ? (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
           <input autoFocus inputMode="decimal" value={ie!.value}
-            onChange={e => onChange({ ...ie!, value: e.target.value })}
-            onKeyDown={e => { if (e.key === 'Enter') onSave(ie!); if (e.key === 'Escape') onCancel(); }}
+            onChange={e => onChange({ ...ie!, value: e.target.value.replace('.', ',') })}
+            onKeyDown={e => {
+              if (e.key === '.' || e.key === ',') {
+                e.preventDefault();
+                const el = e.currentTarget;
+                const s = el.selectionStart ?? el.value.length;
+                const end = el.selectionEnd ?? s;
+                onChange({ ...ie!, value: el.value.slice(0, s) + ',' + el.value.slice(end) });
+                requestAnimationFrame(() => el.setSelectionRange(s + 1, s + 1));
+                return;
+              }
+              if (e.key === 'Enter') onSave(ie!);
+              if (e.key === 'Escape') onCancel();
+            }}
             style={{ width: w, padding: '2px 6px', borderRadius: 5, border: '2px solid var(--or)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 12, outline: 'none' }} />
           <button onMouseDown={e => { e.preventDefault(); onSave(ie!); }}
             style={{ width: 24, height: 24, borderRadius: 5, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>✓</button>
