@@ -344,7 +344,7 @@ export default function CatalogPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>Adet Fiyatı</div>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        {[1, 10, 50, 100].map(n => (
+                        {[1, 100].map(n => (
                           <button key={n} onClick={() => setQty(n)} style={{
                             flex: 1, padding: '6px 0', borderRadius: 8, fontSize: 12, fontWeight: 700,
                             border: qty === n ? '2px solid var(--or)' : '1px solid var(--border)',
@@ -352,7 +352,7 @@ export default function CatalogPage() {
                             color: qty === n ? 'var(--or)' : 'var(--text-2)',
                             cursor: 'pointer',
                           }}>
-                            {n === 1 ? 'Tekil' : `${n} adet`}
+                            {n === 1 ? 'Liste Fiyatı' : '100 Adet Fiyatı'}
                           </button>
                         ))}
                       </div>
