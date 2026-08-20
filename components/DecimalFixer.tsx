@@ -7,6 +7,7 @@ export default function DecimalFixer() {
       if (e.key !== '.') return;
       const el = e.target as HTMLInputElement;
       if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
+      if (el.dataset.decimalSkip) return;
       if (el.inputMode !== 'decimal') return;
       e.preventDefault();
       const s = el.selectionStart ?? el.value.length;

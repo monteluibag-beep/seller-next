@@ -1088,14 +1088,29 @@ export default function ProductsPage() {
                   </label>
                   <div style={{ position: 'relative' }}>
                     <input
-                      className="form-input" inputMode="decimal"
+                      className="form-input"
+                      data-decimal-skip="true"
                       value={costUsdInput} onFocus={selectAll}
                       placeholder="0"
                       style={{ paddingRight: 30, borderColor: form.costUsd ? 'rgba(232,93,4,.4)' : undefined }}
+                      onKeyDown={e => {
+                        if (e.key === '.' || e.key === ',') {
+                          e.preventDefault();
+                          const el = e.currentTarget;
+                          const s = el.selectionStart ?? el.value.length;
+                          const end = el.selectionEnd ?? s;
+                          if (el.value.includes(',')) return;
+                          const next = el.value.slice(0, s) + ',' + el.value.slice(end);
+                          setCostUsdInput(next);
+                          const costUsd = parseFloat(next.replace(',', '.')) || 0;
+                          setForm(f => ({ ...f, costUsd, list: listManual ? f.list : recommendedList(costUsd * usdRate || f.cost) }));
+                          requestAnimationFrame(() => el.setSelectionRange(s + 1, s + 1));
+                        }
+                      }}
                       onChange={e => {
-                        const raw = e.target.value.replace('.', ',');
-                        setCostUsdInput(raw);
-                        const costUsd = parseFloat(raw.replace(',', '.')) || 0;
+                        const val = e.target.value.replace(/[^0-9,]/g, '');
+                        setCostUsdInput(val);
+                        const costUsd = parseFloat(val.replace(',', '.')) || 0;
                         setForm(f => ({
                           ...f, costUsd,
                           list: listManual ? f.list : recommendedList(costUsd * usdRate || f.cost),
