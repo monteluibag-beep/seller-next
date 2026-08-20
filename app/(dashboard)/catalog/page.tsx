@@ -176,7 +176,7 @@ export default function CatalogPage() {
   const cats = [...new Set(products.map(p => p.catName).filter(Boolean))].sort();
   const productsByCat: Record<string, Product[]> = {};
   cats.forEach(cat => {
-    productsByCat[cat] = products.filter(p => p.catName === cat && p.stock > 0);
+    productsByCat[cat] = products.filter(p => p.catName === cat);
   });
 
   function toggleCat(cat: string) {
