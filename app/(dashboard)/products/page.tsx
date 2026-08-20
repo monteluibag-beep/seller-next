@@ -1088,8 +1088,21 @@ export default function ProductsPage() {
                       value={form.costUsd || ''} onFocus={selectAll}
                       placeholder="0"
                       style={{ paddingRight: 30, borderColor: form.costUsd ? 'rgba(232,93,4,.4)' : undefined }}
+                      onKeyDown={e => {
+                        if (e.key === '.' || e.key === ',') {
+                          e.preventDefault();
+                          const el = e.currentTarget;
+                          const s = el.selectionStart ?? el.value.length;
+                          const end = el.selectionEnd ?? s;
+                          const raw = String(el.value).slice(0, s) + ',' + String(el.value).slice(end);
+                          const costUsd = parseFloat(raw.replace(',', '.')) || 0;
+                          setForm(f => ({ ...f, costUsd, list: listManual ? f.list : recommendedList(costUsd * usdRate || f.cost) }));
+                          requestAnimationFrame(() => el.setSelectionRange(s + 1, s + 1));
+                        }
+                      }}
                       onChange={e => {
-                        const costUsd = parseFloat(e.target.value.replace(',', '.')) || 0;
+                        const raw = e.target.value.replace(',', '.');
+                        const costUsd = parseFloat(raw) || 0;
                         setForm(f => ({
                           ...f,
                           costUsd,
