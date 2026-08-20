@@ -184,6 +184,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState<Omit<Product, 'id'>>(empty);
   const [codeManual, setCodeManual] = useState(false);
   const [listManual, setListManual] = useState(false);
+  const [costUsdInput, setCostUsdInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [scanTarget, setScanTarget] = useState<ScanTarget>(null);
   const [barcodeError, setBarcodeError] = useState('');
@@ -281,6 +282,7 @@ export default function ProductsPage() {
     resetVariantInputs();
     setCodeManual(false);
     setListManual(false);
+    setCostUsdInput('');
     setOpen(true);
     setFabOpen(false);
   }
@@ -453,6 +455,7 @@ export default function ProductsPage() {
     resetVariantInputs();
     setCodeManual(true);
     setListManual(true);
+    setCostUsdInput(String(p.costUsd ?? 0));
     setOpen(true);
   }
 
@@ -470,6 +473,7 @@ export default function ProductsPage() {
     resetVariantInputs();
     setCodeManual(!newCode);
     setListManual(true);
+    setCostUsdInput(String(p.costUsd ?? 0));
     setOpen(true);
   }
 
@@ -1085,27 +1089,15 @@ export default function ProductsPage() {
                   <div style={{ position: 'relative' }}>
                     <input
                       className="form-input" inputMode="decimal"
-                      value={form.costUsd || ''} onFocus={selectAll}
+                      value={costUsdInput} onFocus={selectAll}
                       placeholder="0"
                       style={{ paddingRight: 30, borderColor: form.costUsd ? 'rgba(232,93,4,.4)' : undefined }}
-                      onKeyDown={e => {
-                        if (e.key === '.' || e.key === ',') {
-                          e.preventDefault();
-                          const el = e.currentTarget;
-                          const s = el.selectionStart ?? el.value.length;
-                          const end = el.selectionEnd ?? s;
-                          const raw = String(el.value).slice(0, s) + ',' + String(el.value).slice(end);
-                          const costUsd = parseFloat(raw.replace(',', '.')) || 0;
-                          setForm(f => ({ ...f, costUsd, list: listManual ? f.list : recommendedList(costUsd * usdRate || f.cost) }));
-                          requestAnimationFrame(() => el.setSelectionRange(s + 1, s + 1));
-                        }
-                      }}
                       onChange={e => {
-                        const raw = e.target.value.replace(',', '.');
-                        const costUsd = parseFloat(raw) || 0;
+                        const raw = e.target.value.replace('.', ',');
+                        setCostUsdInput(raw);
+                        const costUsd = parseFloat(raw.replace(',', '.')) || 0;
                         setForm(f => ({
-                          ...f,
-                          costUsd,
+                          ...f, costUsd,
                           list: listManual ? f.list : recommendedList(costUsd * usdRate || f.cost),
                         }));
                       }}
