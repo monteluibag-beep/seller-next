@@ -5,6 +5,9 @@ import { db } from '@/lib/firebase';
 import type { Product } from '@/types';
 import { IconBook2, IconDownload, IconCheck } from '@tabler/icons-react';
 import type { FirmInfo } from '@/lib/offerPdf';
+import { useRates } from '@/hooks/useRates';
+
+type Currency = 'TRY' | 'USD' | 'EUR';
 
 interface Settings {
   firmName?: string; firmAddress?: string; firmPhone?: string;
@@ -22,7 +25,22 @@ function generateCatalogHtml(
   firm: FirmInfo,
   showPrice: boolean,
   showCode: boolean,
+  currency: Currency,
+  qty: number,
+  rates: { USD: number; EUR: number },
 ): string {
+  const currSymbol = currency === 'TRY' ? '₺' : currency === 'USD' ? '$' : '€';
+  const rate = currency === 'TRY' ? 1 : rates[currency];
+
+  function fmtPrice(tryPrice: number): string {
+    const converted = tryPrice / rate;
+    const total = converted * qty;
+    if (qty > 1) {
+      return `${currSymbol}${converted.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · ${qty} adet: ${currSymbol}${total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return `${currSymbol}${converted.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
   const logoHtml = firm.logoDataUrl
     ? `<img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:48px;object-fit:contain;">`
     : `<div style="font-size:22px;font-weight:900;color:#E85D04;letter-spacing:-1px;">${esc(firm.name)}</div>`;
@@ -31,7 +49,7 @@ function generateCatalogHtml(
     const prods = productsByCat[cat] || [];
     const productCards = prods.map(p => `
       <div style="break-inside:avoid;background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
-        <div style="background:#f9fafb;height:180px;display:flex;align-items:center;justify-content:center;padding:12px;">
+        <div style="background:#fff;height:180px;display:flex;align-items:center;justify-content:center;padding:12px;">
           ${p.photo
             ? `<img src="${esc(p.photo)}" alt="${esc(p.name)}" style="max-height:156px;max-width:100%;object-fit:contain;">`
             : `<div style="width:80px;height:80px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
@@ -42,7 +60,7 @@ function generateCatalogHtml(
         <div style="padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:6px;">
           <div style="font-size:13px;font-weight:700;color:#111;line-height:1.3;">${esc(p.name)}</div>
           ${showCode && p.code ? `<div style="font-size:11px;color:#6b7280;font-family:monospace;background:#f3f4f6;padding:2px 8px;border-radius:4px;display:inline-block;width:fit-content;">${esc(p.code)}</div>` : ''}
-          ${showPrice && p.list ? `<div style="font-size:15px;font-weight:800;color:#E85D04;margin-top:auto;">₺${p.list.toLocaleString('tr-TR')}</div>` : ''}
+          ${showPrice && p.list ? `<div style="font-size:13px;font-weight:800;color:#E85D04;margin-top:auto;">${fmtPrice(p.list)}</div>` : ''}
         </div>
       </div>
     `).join('');
@@ -141,6 +159,9 @@ export default function CatalogPage() {
   const [showPrice, setShowPrice] = useState(true);
   const [showCode, setShowCode] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [currency, setCurrency] = useState<Currency>('TRY');
+  const [qty, setQty] = useState<number>(1);
+  const { rates } = useRates();
 
   useEffect(() => {
     Promise.all([
@@ -204,7 +225,7 @@ export default function CatalogPage() {
       };
 
       const orderedCats = cats.filter(c => selectedCats.has(c));
-      const html = generateCatalogHtml(orderedCats, productsByCat, firm, showPrice, showCode);
+      const html = generateCatalogHtml(orderedCats, productsByCat, firm, showPrice, showCode, currency, qty, rates);
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const w = window.open(url, '_blank', 'width=1000,height=800');
@@ -300,6 +321,44 @@ export default function CatalogPage() {
                     <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Liste fiyatı ürün kartında görünür</div>
                   </div>
                 </label>
+
+                {showPrice && (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>Para Birimi</div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {(['TRY', 'USD', 'EUR'] as Currency[]).map(c => (
+                          <button key={c} onClick={() => setCurrency(c)} style={{
+                            flex: 1, padding: '6px 0', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            border: currency === c ? '2px solid var(--or)' : '1px solid var(--border)',
+                            background: currency === c ? 'var(--or-tint)' : 'var(--surface-2)',
+                            color: currency === c ? 'var(--or)' : 'var(--text-2)',
+                            cursor: 'pointer',
+                          }}>
+                            {c === 'TRY' ? '₺ TRY' : c === 'USD' ? '$ USD' : '€ EUR'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>Adet Fiyatı</div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {[1, 10, 50, 100].map(n => (
+                          <button key={n} onClick={() => setQty(n)} style={{
+                            flex: 1, padding: '6px 0', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            border: qty === n ? '2px solid var(--or)' : '1px solid var(--border)',
+                            background: qty === n ? 'var(--or-tint)' : 'var(--surface-2)',
+                            color: qty === n ? 'var(--or)' : 'var(--text-2)',
+                            cursor: 'pointer',
+                          }}>
+                            {n === 1 ? 'Tekil' : `${n} adet`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                   <input type="checkbox" checked={showCode} onChange={e => setShowCode(e.target.checked)}
                     style={{ width: 16, height: 16, accentColor: 'var(--or)', cursor: 'pointer' }} />
