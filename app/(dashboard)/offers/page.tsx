@@ -924,12 +924,24 @@ export default function OffersPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
               <div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, marginBottom: 6 }}>
-                  <input type="checkbox" checked={showSubtotal} onChange={e => setShowSubtotal(e.target.checked)} />
-                  <span style={{ color: 'var(--text-2)' }}>Teklif çıktısında ara toplam göster</span>
+                  <span style={{
+                    width: 16, height: 16, borderRadius: 4, border: '2px solid var(--border)',
+                    background: showSubtotal ? 'var(--or)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .15s',
+                  }} onClick={() => setShowSubtotal(v => !v)}>
+                    {showSubtotal && <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </span>
+                  <span style={{ color: 'var(--text-2)' }} onClick={() => setShowSubtotal(v => !v)}>Ara toplam ve genel toplam göster</span>
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
-                  <input type="checkbox" checked={discountEnabled} onChange={e => setDiscountEnabled(e.target.checked)} />
-                  <span style={{ color: 'var(--text-2)' }}>İskonto Uygula</span>
+                  <span style={{
+                    width: 16, height: 16, borderRadius: 4, border: '2px solid var(--border)',
+                    background: discountEnabled ? 'var(--or)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .15s',
+                  }} onClick={() => setDiscountEnabled(v => !v)}>
+                    {discountEnabled && <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </span>
+                  <span style={{ color: 'var(--text-2)' }} onClick={() => setDiscountEnabled(v => !v)}>İskonto Uygula</span>
                   {discountEnabled && discountRate > 0 && <span className="badge badge-green">%{discountRate} ({totalQty} adet)</span>}
                   {discountEnabled && discountRate === 0 && totalQty > 0 && <span style={{ fontSize: 11, color: 'var(--text-3)' }}>(min. 10 adet)</span>}
                 </label>
