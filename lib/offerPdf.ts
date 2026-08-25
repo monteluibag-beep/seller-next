@@ -78,7 +78,7 @@ export function generateOfferHtml(offer: Offer, firm: FirmInfo): string {
       </tr>`;
   }).join('');
 
-  const showSubtotal = (offer as Offer & { showSubtotal?: boolean }).showSubtotal !== false;
+  const showSubtotal = offer.showSubtotal !== false;
   const subtotalRow = showSubtotal ? `
     <tr class="sub-row">
       <td colspan="5" class="r" style="color:#555;">Ara Toplam</td>
@@ -365,12 +365,12 @@ export function generateOfferHtml(offer: Offer, firm: FirmInfo): string {
     </table>
 
     <!-- Grand total -->
-    <div class="total-wrap">
+    ${showSubtotal ? `<div class="total-wrap">
       <div class="total-box">
         <div class="total-label">GENEL TOPLAM</div>
         <div class="total-amount">${sym}${fmtNum(offer.total)}</div>
       </div>
-    </div>
+    </div>` : ''}
 
     ${noteHtml}
     ${termsHtml}

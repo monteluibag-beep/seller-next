@@ -231,9 +231,9 @@ export default function OffersPage() {
           date: serverTimestamp(),
         });
       }
+      await load();
       setOpen(false);
       resetForm();
-      load();
     } finally {
       setSaving(false);
     }
