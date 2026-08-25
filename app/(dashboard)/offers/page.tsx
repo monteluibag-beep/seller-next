@@ -51,6 +51,7 @@ export default function OffersPage() {
   const [selCat, setSelCat] = useState('');
   const [saving, setSaving] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  const [offerSearch, setOfferSearch] = useState('');
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   // PDF preview modal
   const [pdfPreview, setPdfPreview] = useState<{ url: string; filename: string; offer: Offer } | null>(null);
@@ -433,6 +434,13 @@ export default function OffersPage() {
     window.open(`mailto:?subject=${encodeURIComponent(`Teklif ${offer.no}`)}&body=${encodeURIComponent(body)}`, '_blank');
   }
 
+  const filteredOffers = offerSearch.trim()
+    ? offers.filter(o =>
+        o.no.toLowerCase().includes(offerSearch.toLowerCase()) ||
+        o.customer.toLowerCase().includes(offerSearch.toLowerCase())
+      )
+    : offers;
+
   const viewOffer = offers.find(o => o.id === viewId);
   const showDropdown = searchFocused && productSearch.length > 0 && filteredProducts.length > 0;
 
@@ -443,9 +451,21 @@ export default function OffersPage() {
           <div className="page-title">Teklifler</div>
           <div className="page-sub">{offers.filter(o => o.status === 'pending').length} açık teklif</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setOpen(true)}>
-          <IconPlus size={16} /> Yeni Teklif
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <IconSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', pointerEvents: 'none' }} />
+            <input
+              className="form-input"
+              placeholder="Teklif no veya müşteri ara..."
+              value={offerSearch}
+              onChange={e => setOfferSearch(e.target.value)}
+              style={{ paddingLeft: 32, height: 36, width: 220, fontSize: 13 }}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={() => setOpen(true)}>
+            <IconPlus size={16} /> Yeni Teklif
+          </button>
+        </div>
       </div>
       <button className="mob-fab" onClick={() => setOpen(true)} aria-label="Yeni Teklif">
         <IconPlus size={22} />
@@ -457,8 +477,8 @@ export default function OffersPage() {
           <div className="table-wrap mob-hide-table">
             {loading ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
-            ) : offers.length === 0 ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Teklif bulunamadı</div>
+            ) : filteredOffers.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>{offerSearch ? 'Arama sonucu bulunamadı' : 'Teklif bulunamadı'}</div>
             ) : (
               <table>
                 <thead>
@@ -473,7 +493,7 @@ export default function OffersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {offers.map(o => (
+                  {filteredOffers.map(o => (
                     <tr key={o.id}>
                       <td><code style={{ fontSize: 11, background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 4, color: 'var(--text-2)' }}>{o.no}</code></td>
                       <td style={{ fontWeight: 600 }}>{o.customer}</td>
@@ -533,9 +553,9 @@ export default function OffersPage() {
           <div className="mob-card-list" style={{ padding: '4px 0' }}>
             {loading ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
-            ) : offers.length === 0 ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Teklif bulunamadı</div>
-            ) : offers.map(o => {
+            ) : filteredOffers.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>{offerSearch ? 'Arama sonucu bulunamadı' : 'Teklif bulunamadı'}</div>
+            ) : filteredOffers.map(o => {
               const offerSym = CURRENCY_SYMBOLS[(o as Offer & {currency?: Currency}).currency ?? 'TRY'] ?? '₺';
               return (
                 <div key={o.id} style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
