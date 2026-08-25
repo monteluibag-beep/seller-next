@@ -705,79 +705,128 @@ export default function OffersPage() {
               )}
             </div>
 
-            {/* Items table */}
+            {/* Items — desktop table / mobile cards */}
             {items.length > 0 && (
-              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto', marginBottom: 16, WebkitOverflowScrolling: 'touch' }}>
-                <table style={{ minWidth: 480 }}>
-                  <thead>
-                    <tr>
-                      <th>Ürün</th>
-                      <th style={{ width: 64 }}>Adet</th>
-                      <th style={{ width: 100 }}>Liste ({sym})</th>
-                      <th style={{ width: 70 }}>İskonto</th>
-                      <th style={{ width: 100 }}>
-                        {discountEnabled ? `Net (${sym})` : `Satış (${sym})`}
-                      </th>
-                      <th style={{ width: 32 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {computedItems.map(item => {
-                      const itemCostTRY = item.cost * item.qty;
-                      const itemSaleTRY = toTRY(item.finalPrice * item.qty);
-                      const itemProfit = itemSaleTRY - itemCostTRY;
-                      const itemMargin = itemSaleTRY > 0 ? (itemProfit / itemSaleTRY) * 100 : 0;
-                      return (
-                        <tr key={item.productId}>
-                          <td>
-                            <div style={{ fontWeight: 500, color: 'var(--text-1)', fontSize: 13 }}>{item.name}</div>
-                            <div style={{ fontSize: 10, color: itemMargin >= 0 ? '#4ADE80' : '#F87171', marginTop: 2 }}>
-                              Kar: %{itemMargin.toFixed(1)} · ₺{itemProfit.toFixed(0)}
-                            </div>
-                          </td>
-                          <td>
-                            <input
-                              type="number" min={1} value={item.qty}
+              <>
+                {/* Desktop table */}
+                <div className="mob-hide-table" style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+                  <table style={{ minWidth: 480 }}>
+                    <thead>
+                      <tr>
+                        <th>Ürün</th>
+                        <th style={{ width: 64 }}>Adet</th>
+                        <th style={{ width: 100 }}>Liste ({sym})</th>
+                        <th style={{ width: 70 }}>İskonto</th>
+                        <th style={{ width: 100 }}>{discountEnabled ? `Net (${sym})` : `Satış (${sym})`}</th>
+                        <th style={{ width: 32 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {computedItems.map(item => {
+                        const itemCostTRY = item.cost * item.qty;
+                        const itemSaleTRY = toTRY(item.finalPrice * item.qty);
+                        const itemProfit = itemSaleTRY - itemCostTRY;
+                        const itemMargin = itemSaleTRY > 0 ? (itemProfit / itemSaleTRY) * 100 : 0;
+                        return (
+                          <tr key={item.productId}>
+                            <td>
+                              <div style={{ fontWeight: 500, color: 'var(--text-1)', fontSize: 13 }}>{item.name}</div>
+                              <div style={{ fontSize: 10, color: itemMargin >= 0 ? '#4ADE80' : '#F87171', marginTop: 2 }}>
+                                Kar: %{itemMargin.toFixed(1)} · ₺{itemProfit.toFixed(0)}
+                              </div>
+                            </td>
+                            <td>
+                              <input type="number" min={1} value={item.qty}
+                                onChange={e => setQty(item.productId, parseInt(e.target.value) || 1)}
+                                onFocus={e => e.target.select()}
+                                style={{ width: 56, padding: '4px 6px', background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)', textAlign: 'center' }} />
+                            </td>
+                            <td>
+                              <input inputMode="decimal" min={0} value={item.listPrice}
+                                onChange={e => setListPrice(item.productId, parseFloat(e.target.value.replace(',', '.')) || 0)}
+                                style={{ width: 90, padding: '4px 8px', background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)' }} />
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {discountEnabled && discountRate > 0
+                                ? <span className="badge badge-green">%{discountRate}</span>
+                                : <span style={{ color: 'var(--text-3)' }}>—</span>}
+                            </td>
+                            <td>
+                              {discountEnabled
+                                ? <span style={{ fontWeight: 700, color: 'var(--text-1)' }}>{sym}{item.finalPrice.toFixed(2)}</span>
+                                : <input inputMode="decimal" min={0} value={item.finalPrice}
+                                    onChange={e => setFinalPrice(item.productId, parseFloat(e.target.value.replace(',', '.')) || 0)}
+                                    style={{ width: 90, padding: '4px 8px', background: 'var(--surface-3)', border: '1px solid var(--or)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }} />
+                              }
+                            </td>
+                            <td>
+                              <button onClick={() => removeItem(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#F87171' }}>
+                                <IconTrash size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="mob-card-list" style={{ marginBottom: 16, gap: 8 }}>
+                  {computedItems.map(item => {
+                    const itemCostTRY = item.cost * item.qty;
+                    const itemSaleTRY = toTRY(item.finalPrice * item.qty);
+                    const itemProfit = itemSaleTRY - itemCostTRY;
+                    const itemMargin = itemSaleTRY > 0 ? (itemProfit / itemSaleTRY) * 100 : 0;
+                    return (
+                      <div key={item.productId} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)', flex: 1, paddingRight: 8 }}>{item.name}</div>
+                          <button onClick={() => removeItem(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#F87171', flexShrink: 0 }}>
+                            <IconTrash size={16} />
+                          </button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 4 }}>Adet</div>
+                            <input type="number" min={1} value={item.qty}
                               onChange={e => setQty(item.productId, parseInt(e.target.value) || 1)}
                               onFocus={e => e.target.select()}
-                              style={{ width: 60, padding: '4px 6px', background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)', textAlign: 'center' }}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              inputMode="decimal" min={0} value={item.listPrice}
+                              style={{ width: '100%', padding: '6px 8px', background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 6, fontSize: 14, color: 'var(--text-1)', textAlign: 'center' }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 4 }}>Liste ({sym})</div>
+                            <input inputMode="decimal" min={0} value={item.listPrice}
                               onChange={e => setListPrice(item.productId, parseFloat(e.target.value.replace(',', '.')) || 0)}
-                              style={{ width: 110, padding: '4px 8px', background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)' }}
-                            />
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {discountEnabled && discountRate > 0
-                              ? <span className="badge badge-green">%{discountRate}</span>
-                              : <span style={{ color: 'var(--text-3)' }}>—</span>
+                              onFocus={e => e.target.select()}
+                              style={{ width: '100%', padding: '6px 8px', background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 6, fontSize: 14, color: 'var(--text-1)' }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 4 }}>
+                              {discountEnabled ? `Net (${sym})` : `Satış (${sym})`}
+                              {discountEnabled && discountRate > 0 && <span className="badge badge-green" style={{ marginLeft: 4 }}>%{discountRate}</span>}
+                            </div>
+                            {discountEnabled
+                              ? <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', padding: '6px 0' }}>{sym}{item.finalPrice.toFixed(2)}</div>
+                              : <input inputMode="decimal" min={0} value={item.finalPrice}
+                                  onChange={e => setFinalPrice(item.productId, parseFloat(e.target.value.replace(',', '.')) || 0)}
+                                  onFocus={e => e.target.select()}
+                                  style={{ width: '100%', padding: '6px 8px', background: 'var(--surface-3)', border: '1px solid var(--or)', borderRadius: 6, fontSize: 14, color: 'var(--text-1)', fontWeight: 600 }} />
                             }
-                          </td>
-                          <td>
-                            {discountEnabled ? (
-                              <span style={{ fontWeight: 700, color: 'var(--text-1)' }}>{sym}{item.finalPrice.toFixed(2)}</span>
-                            ) : (
-                              <input
-                                inputMode="decimal" min={0} value={item.finalPrice}
-                                onChange={e => setFinalPrice(item.productId, parseFloat(e.target.value.replace(',', '.')) || 0)}
-                                style={{ width: 110, padding: '4px 8px', background: 'var(--surface-3)', border: '1px solid var(--or)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}
-                              />
-                            )}
-                          </td>
-                          <td>
-                            <button onClick={() => removeItem(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#F87171' }}>
-                              <IconTrash size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 4 }}>Toplam</div>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--or)', padding: '6px 0' }}>{sym}{(item.finalPrice * item.qty).toFixed(2)}</div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 10, color: itemMargin >= 0 ? '#4ADE80' : '#F87171', marginTop: 6 }}>
+                          Kar: %{itemMargin.toFixed(1)} · ₺{itemProfit.toFixed(0)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
 
             {/* Profit analysis panel — internal only */}
