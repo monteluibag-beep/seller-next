@@ -119,7 +119,7 @@ function generateCatalogHtml(
 <div style="height:100vh;background:#fff;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
 
   <!-- ARKA PLAN: tam ekran çanta ikonu ızgarası -->
-  <div id="bg-icons" style="position:absolute;inset:0;z-index:0;opacity:.08;display:grid;grid-template-columns:repeat(12,1fr);gap:0;align-items:center;justify-items:center;padding:8px;">
+  <div id="bg-icons" style="position:absolute;inset:0;z-index:0;opacity:.18;display:grid;grid-template-columns:repeat(12,1fr);gap:0;align-items:center;justify-items:center;padding:8px;">
     ${(() => {
       const icons = [
         // alışveriş çantası
@@ -142,47 +142,45 @@ function generateCatalogHtml(
   </div>
 
   <!-- İçerik üzerinde hafif beyaz gradient (ikonları arkada soldurur) -->
-  <div style="position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse at 38% 50%, rgba(255,255,255,.92) 30%, rgba(255,255,255,.7) 65%, rgba(255,255,255,.3) 100%);"></div>
+  <div style="position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.80) 20%, rgba(255,255,255,.50) 55%, rgba(255,255,255,.15) 100%);"></div>
 
-  <!-- Sol turuncu şerit -->
-  <div style="position:absolute;left:0;top:0;width:6px;height:100%;background:linear-gradient(180deg,#E85D04,#FF9A3C);z-index:3;"></div>
-
-  <!-- İÇERİK -->
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 72px 0 88px;position:relative;z-index:3;">
+  <!-- İÇERİK — tam ortada -->
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 60px;position:relative;z-index:3;text-align:center;">
 
     <!-- Logo -->
     ${firm.logoDataUrl
-      ? `<div style="margin-bottom:48px;"><img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:60px;object-fit:contain;"></div>`
+      ? `<div style="margin-bottom:40px;"><img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:64px;object-fit:contain;"></div>`
       : ''
     }
 
     <!-- Etiket -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;">
       <div style="width:28px;height:2px;background:#E85D04;border-radius:1px;"></div>
       <span style="font-size:10px;font-weight:800;color:#E85D04;text-transform:uppercase;letter-spacing:4px;">Ürün Kataloğu</span>
+      <div style="width:28px;height:2px;background:#E85D04;border-radius:1px;"></div>
     </div>
 
     <!-- Firma adı -->
-    <div style="font-size:40px;font-weight:900;color:#1a1a1a;letter-spacing:-1.5px;line-height:1.1;max-width:560px;margin-bottom:36px;">
+    <div style="font-size:42px;font-weight:900;color:#1a1a1a;letter-spacing:-1.5px;line-height:1.1;max-width:640px;margin-bottom:36px;">
       ${esc(firm.name)}
     </div>
 
     <!-- Stats -->
-    <div style="display:flex;gap:12px;margin-bottom:40px;">
-      <div style="background:#E85D04;border-radius:12px;padding:14px 22px;min-width:90px;">
+    <div style="display:flex;gap:12px;justify-content:center;margin-bottom:36px;">
+      <div style="background:#E85D04;border-radius:12px;padding:14px 28px;min-width:90px;">
         <div style="font-size:26px;font-weight:900;color:#fff;line-height:1;">${selectedCats.length}</div>
         <div style="font-size:10px;color:rgba(255,255,255,.75);margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Kategori</div>
       </div>
-      <div style="background:rgba(255,255,255,.85);border:1.5px solid #ede9e3;border-radius:12px;padding:14px 22px;min-width:90px;backdrop-filter:blur(4px);">
+      <div style="background:rgba(255,255,255,.88);border:1.5px solid #ede9e3;border-radius:12px;padding:14px 28px;min-width:90px;">
         <div style="font-size:26px;font-weight:900;color:#1a1a1a;line-height:1;">${selectedCats.reduce((s, c) => s + (productsByCat[c]?.length || 0), 0)}</div>
         <div style="font-size:10px;color:#999;margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Ürün</div>
       </div>
     </div>
 
     <!-- Kategoriler -->
-    <div style="display:flex;flex-wrap:wrap;gap:8px;max-width:520px;">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px;">
       ${selectedCats.map(c => `
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:8px;background:rgba(255,255,255,.85);border:1.5px solid #e8e4de;font-size:12px;font-weight:600;color:#444;">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:8px;background:rgba(255,255,255,.88);border:1.5px solid #e8e4de;font-size:12px;font-weight:600;color:#444;">
           <span style="width:5px;height:5px;border-radius:50%;background:#E85D04;flex-shrink:0;display:inline-block;"></span>
           ${esc(c)}
         </div>
@@ -191,7 +189,7 @@ function generateCatalogHtml(
   </div>
 
   <!-- Alt: tarih -->
-  <div style="padding:18px 88px;display:flex;align-items:center;justify-content:center;border-top:1px solid rgba(0,0,0,.06);position:relative;z-index:3;">
+  <div style="padding:18px;display:flex;align-items:center;justify-content:center;border-top:1px solid rgba(0,0,0,.06);position:relative;z-index:3;">
     <span style="font-size:11px;color:#aaa;font-weight:500;">${new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })}</span>
   </div>
 </div>
