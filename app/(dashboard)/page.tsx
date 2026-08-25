@@ -687,30 +687,30 @@ export default function DashboardPage() {
             <div className="stat-value">{loading ? '—' : (stats?.totalStock ?? 0).toLocaleString('tr-TR')}</div>
             <div className="stat-sub">{loading ? '...' : `${stats?.productCount ?? 0} farklı ürün · grafik için tıkla`}</div>
           </div>
-          <div className="stat-card accent-green">
+          <Link href="/sales" className="stat-card accent-green" style={{ textDecoration: 'none', cursor: 'pointer' }}>
             <div className="stat-icon green"><IconReceipt size={20} /></div>
             <div className="stat-label">Bu Ay Satış</div>
             <div className="stat-value">{loading ? '—' : formatTRY(stats?.thisMonthSales ?? 0)}</div>
-            <div className="stat-sub">{loading ? '...' : `${stats?.thisMonthCount ?? 0} işlem`}</div>
-          </div>
-          <div className="stat-card accent-blue">
+            <div className="stat-sub">{loading ? '...' : `${stats?.thisMonthCount ?? 0} işlem · görüntüle →`}</div>
+          </Link>
+          <Link href="/offers" className="stat-card accent-blue" style={{ textDecoration: 'none', cursor: 'pointer' }}>
             <div className="stat-icon blue"><IconFileText size={20} /></div>
             <div className="stat-label">Açık Teklifler</div>
             <div className="stat-value">{loading ? '—' : stats?.openOffers ?? 0}</div>
-            <div className="stat-sub">yanıt bekliyor</div>
-          </div>
-          <div className="stat-card accent-red">
+            <div className="stat-sub">yanıt bekliyor · görüntüle →</div>
+          </Link>
+          <Link href="/stock" className="stat-card accent-red" style={{ textDecoration: 'none', cursor: 'pointer' }}>
             <div className="stat-icon red"><IconAlertTriangle size={20} /></div>
             <div className="stat-label">Düşük Stok</div>
             <div className="stat-value">{loading ? '—' : stats?.lowStock ?? 0}</div>
-            <div className="stat-sub">yenileme gerekli</div>
-          </div>
-          <div className="stat-card" style={{ borderColor: 'rgba(139,92,246,.25)', background: 'rgba(139,92,246,.05)' }}>
+            <div className="stat-sub">yenileme gerekli · görüntüle →</div>
+          </Link>
+          <Link href="/products" className="stat-card" style={{ borderColor: 'rgba(139,92,246,.25)', background: 'rgba(139,92,246,.05)', textDecoration: 'none', cursor: 'pointer' }}>
             <div className="stat-icon" style={{ background: 'rgba(139,92,246,.15)', color: '#8B5CF6' }}><IconTool size={20} /></div>
             <div className="stat-label">İmalat Fiyatı Eksik</div>
             <div className="stat-value" style={{ color: '#8B5CF6' }}>{loading ? '—' : stats?.noCostCount ?? 0}</div>
-            <div className="stat-sub">fiyat bekliyor</div>
-          </div>
+            <div className="stat-sub">fiyat bekliyor · görüntüle →</div>
+          </Link>
         </div>
 
         {/* Charts */}
