@@ -397,13 +397,24 @@ export default function OffersPage() {
       const file = new File([pdfBlob], filename, { type: 'application/pdf' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Mobil: native paylaşım
         await navigator.share({ files: [file], title: filename });
       } else {
-        // Masaüstü fallback — indir
+        // Masaüstü: PDF indir + WhatsApp Web'i aç
         const url = URL.createObjectURL(pdfBlob);
         const a = document.createElement('a');
         a.href = url; a.download = filename; a.click();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        // Teklif özetini WhatsApp Web'e gönder
+        const offerSym = CURRENCY_SYMBOLS[(offer as Offer & { currency?: Currency }).currency ?? 'TRY'] ?? '₺';
+        const lines = offer.items.map(i =>
+          `• ${i.name} x${i.qty} = ${offerSym}${((i.finalPrice ?? i.listPrice ?? 0) * i.qty).toFixed(2)}`
+        ).join('\n');
+        const msg = `*Teklif ${offer.no}*\nMüşteri: ${offer.customer}\n\n${lines}\n\n*TOPLAM: ${offerSym}${offer.total.toFixed(2)}*\n\n_(PDF ekte)_`;
+        setTimeout(() => {
+          window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+        }, 500);
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return; // kullanıcı iptal etti
