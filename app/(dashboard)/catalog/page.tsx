@@ -70,9 +70,10 @@ function generateCatalogHtml(
 
     return `
       <!-- KATEGORİ SAYFASI: ${esc(cat)} -->
-      <div style="page-break-before:always;padding:40px 48px;min-height:100vh;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="page-break-before:always;height:297mm;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
+
         <!-- Sayfa başlığı -->
-        <div style="margin-bottom:28px;padding-bottom:18px;border-bottom:3px solid #E85D04;">
+        <div style="padding:36px 48px 18px;border-bottom:3px solid #E85D04;flex-shrink:0;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div style="font-size:11px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
             ${logoHtml}
@@ -81,18 +82,20 @@ function generateCatalogHtml(
           <div style="font-size:12px;color:#6b7280;margin-top:4px;">${prods.length} ürün</div>
         </div>
 
-        <!-- Ürün grid -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
-          ${productCards}
+        <!-- Ürün grid — flex:1 ile kalan alanı doldurur -->
+        <div style="flex:1;padding:24px 48px;overflow:hidden;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+            ${productCards}
+          </div>
         </div>
 
-        <!-- Alt bilgi -->
-        <div style="margin-top:40px;padding-top:14px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? '  ·  ' + esc(firm.phone) : ''}</div>
+        <!-- Alt bilgi — her zaman sayfanın en altında -->
+        <div style="flex-shrink:0;padding:12px 48px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? ' · ' + esc(firm.phone) : ''}</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(cat)}</div>
-            <div style="width:1px;height:14px;background:#e5e7eb;"></div>
-            <div style="font-size:11px;font-weight:700;color:#E85D04;min-width:20px;text-align:right;">${catIdx + 2}</div>
+            <div style="width:1px;height:12px;background:#e5e7eb;"></div>
+            <div style="font-size:11px;font-weight:700;color:#E85D04;">${pageNum}</div>
           </div>
         </div>
       </div>
