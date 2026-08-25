@@ -33,6 +33,7 @@ interface NoCostProduct {
   catName: string;
   costUsd: number;
   list: number;
+  photo?: string;
 }
 
 interface Stats {
@@ -566,6 +567,7 @@ export default function DashboardPage() {
             id: p.id!, name: p.name, catName: p.catName || '',
             costUsd: (p as Product & { costUsd?: number }).costUsd ?? 0,
             list: p.list ?? 0,
+            photo: p.photo || '',
           }));
         const noCostCount = noCostProducts.length;
 
@@ -749,7 +751,17 @@ export default function DashboardPage() {
                 <tbody>
                   {stats.noCostProducts.slice(0, 10).map(p => (
                     <tr key={p.id}>
-                      <td style={{ fontWeight: 600 }}>{p.name}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {p.photo
+                            ? <img src={p.photo} alt={p.name} style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 6, background: 'var(--surface-2)', flexShrink: 0 }} />
+                            : <div style={{ width: 36, height: 36, borderRadius: 6, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                              </div>
+                          }
+                          <span style={{ fontWeight: 600 }}>{p.name}</span>
+                        </div>
+                      </td>
                       <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{p.catName || '—'}</td>
                       <td style={{ fontWeight: 600 }}>{p.list > 0 ? `₺${p.list.toLocaleString('tr-TR')}` : '—'}</td>
                       <td>
