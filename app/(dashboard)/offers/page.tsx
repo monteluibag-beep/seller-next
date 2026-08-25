@@ -553,7 +553,7 @@ export default function OffersPage() {
       {/* ══════════════ CREATE OFFER MODAL ══════════════ */}
       {open && (
         <div className="modal-overlay">
-          <div className="modal-box" style={{ maxWidth: 760, width: '100%', maxHeight: '95dvh', overflowY: 'auto' }}>
+          <div className="modal-box" style={{ maxWidth: 760, width: '100%', maxHeight: '95dvh', overflowY: 'auto', overflowX: 'hidden' }}>
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10, padding: '16px 0 12px', borderBottom: '1px solid var(--border)' }}>
@@ -707,18 +707,18 @@ export default function OffersPage() {
 
             {/* Items table */}
             {items.length > 0 && (
-              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
-                <table>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto', marginBottom: 16, WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ minWidth: 480 }}>
                   <thead>
                     <tr>
                       <th>Ürün</th>
-                      <th style={{ width: 72 }}>Adet</th>
-                      <th style={{ width: 120 }}>Liste ({sym})</th>
-                      <th style={{ width: 90 }}>İskonto</th>
-                      <th style={{ width: 120 }}>
+                      <th style={{ width: 64 }}>Adet</th>
+                      <th style={{ width: 100 }}>Liste ({sym})</th>
+                      <th style={{ width: 70 }}>İskonto</th>
+                      <th style={{ width: 100 }}>
                         {discountEnabled ? `Net (${sym})` : `Satış (${sym})`}
                       </th>
-                      <th style={{ width: 36 }}></th>
+                      <th style={{ width: 32 }}></th>
                     </tr>
                   </thead>
                   <tbody>
