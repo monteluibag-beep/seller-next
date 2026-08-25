@@ -45,7 +45,10 @@ function generateCatalogHtml(
     ? `<img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:48px;object-fit:contain;">`
     : `<div style="font-size:22px;font-weight:900;color:#E85D04;letter-spacing:-1px;">${esc(firm.name)}</div>`;
 
-  const categoryPages = selectedCats.map(cat => {
+  const totalPages = 1 + selectedCats.length; // kapak + kategori sayfaları
+
+  const categoryPages = selectedCats.map((cat, catIdx) => {
+    const pageNum = catIdx + 2; // kapak = 1
     const prods = productsByCat[cat] || [];
     const productCards = prods.map(p => `
       <div style="break-inside:avoid;background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
@@ -86,7 +89,10 @@ function generateCatalogHtml(
         <!-- Alt bilgi -->
         <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
           <div style="font-size:11px;color:#9ca3af;">${esc(firm.name)} · ${esc(firm.phone)} · ${esc(firm.email)}</div>
-          <div style="font-size:11px;color:#9ca3af;">${new Date().toLocaleDateString('tr-TR')}</div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-size:11px;color:#9ca3af;">${new Date().toLocaleDateString('tr-TR')}</div>
+            <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#E85D04;color:#fff;font-size:11px;font-weight:800;">${catIdx + 2}</div>
+          </div>
         </div>
       </div>
     `;
