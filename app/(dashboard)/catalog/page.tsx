@@ -69,15 +69,13 @@ function generateCatalogHtml(
       <!-- KATEGORİ SAYFASI: ${esc(cat)} -->
       <div style="page-break-before:always;padding:40px 48px;min-height:100vh;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
         <!-- Sayfa başlığı -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:3px solid #E85D04;">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">Ürün Kataloğu</div>
-            <div style="font-size:28px;font-weight:900;color:#111;letter-spacing:-0.5px;">${esc(cat)}</div>
-            <div style="font-size:12px;color:#6b7280;margin-top:4px;">${prods.length} ürün</div>
-          </div>
-          <div style="text-align:right;">
+        <div style="margin-bottom:28px;padding-bottom:18px;border-bottom:3px solid #E85D04;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
             ${logoHtml}
           </div>
+          <div style="font-size:26px;font-weight:900;color:#111;letter-spacing:-0.5px;line-height:1.1;">${esc(cat)}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">${prods.length} ürün</div>
         </div>
 
         <!-- Ürün grid -->
@@ -130,12 +128,10 @@ function generateCatalogHtml(
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 72px;position:relative;z-index:1;">
 
     <!-- Logo -->
-    <div style="margin-bottom:56px;">
-      ${firm.logoDataUrl
-        ? `<img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:64px;object-fit:contain;">`
-        : `<div style="font-size:32px;font-weight:900;color:#1a1a1a;letter-spacing:-1.5px;">${esc(firm.name)}</div>`
-      }
-    </div>
+    ${firm.logoDataUrl
+      ? `<div style="margin-bottom:56px;"><img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:64px;object-fit:contain;"></div>`
+      : ''
+    }
 
     <!-- Etiket -->
     <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:20px;">
@@ -143,9 +139,9 @@ function generateCatalogHtml(
       <span style="font-size:11px;font-weight:800;color:#E85D04;text-transform:uppercase;letter-spacing:3px;">Ürün Kataloğu</span>
     </div>
 
-    <!-- Ana başlık -->
-    <div style="font-size:58px;font-weight:900;color:#1a1a1a;letter-spacing:-2.5px;line-height:.95;margin-bottom:10px;">
-      ${esc(firm.name).split(' ').join('<br>')}
+    <!-- Ana başlık — firma adı tek satırda, wordBreak ile taşarsa ikinci satır -->
+    <div style="font-size:52px;font-weight:900;color:#1a1a1a;letter-spacing:-2px;line-height:1.05;margin-bottom:10px;max-width:580px;">
+      ${esc(firm.name)}
     </div>
 
     <!-- Tarih + ayırıcı -->
