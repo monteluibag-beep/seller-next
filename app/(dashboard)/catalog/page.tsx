@@ -48,7 +48,7 @@ function generateCatalogHtml(
   const totalPages = 1 + selectedCats.length; // kapak + kategori sayfaları
 
   const categoryPages = selectedCats.map((cat, catIdx) => {
-    const pageNum = catIdx + 2; // kapak = 1
+    const pageNum = catIdx + 1; // kapak numarasız, içerik 1'den başlar
     const prods = productsByCat[cat] || [];
     const productCards = prods.map(p => `
       <div style="break-inside:avoid;background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
