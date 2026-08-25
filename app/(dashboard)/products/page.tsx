@@ -1126,22 +1126,6 @@ export default function ProductsPage() {
                   )}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Maliyet (₺)</label>
-                  <input
-                    className="form-input" inputMode="decimal"
-                    value={form.cost || ''} onFocus={selectAll}
-                    placeholder="0"
-                    onChange={e => {
-                      const cost = parseFloat(e.target.value.replace(',', '.')) || 0;
-                      setForm(f => ({
-                        ...f,
-                        cost,
-                        list: listManual ? f.list : recommendedList(cost || (f.costUsd ? f.costUsd * usdRate : 0)),
-                      }));
-                    }}
-                  />
-                </div>
-                <div className="form-group">
                   <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>Liste Fiyatı (₺)</span>
                     {((form.costUsd ?? 0) > 0 || form.cost > 0) && (
