@@ -115,66 +115,87 @@ function generateCatalogHtml(
 <body>
 
 <!-- KAPAK SAYFASI -->
-<div style="height:100vh;background:#fff;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
+<div style="height:100vh;background:#FAFAF8;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
 
-  <!-- Sol turuncu dikey şerit -->
-  <div style="position:absolute;left:0;top:0;width:8px;height:100%;background:linear-gradient(180deg,#E85D04 0%,#FF8C38 100%);"></div>
+  <!-- === DEKORATIF ÇANTA İKONLARI (SVG) === -->
 
-  <!-- Sağ alt dekor blok -->
-  <div style="position:absolute;bottom:0;right:0;width:320px;height:320px;background:#fdf3ec;clip-path:polygon(100% 0,100% 100%,0 100%);"></div>
-  <!-- İçindeki küçük turuncu köşe -->
-  <div style="position:absolute;bottom:0;right:0;width:120px;height:120px;background:#E85D04;clip-path:polygon(100% 0,100% 100%,0 100%);"></div>
+  <!-- Dekor: sağ yarım daire turuncu -->
+  <div style="position:absolute;top:-80px;right:-180px;width:460px;height:460px;border-radius:50%;background:linear-gradient(135deg,#E85D04,#FF9A3C);opacity:.10;"></div>
+  <div style="position:absolute;bottom:-100px;right:-120px;width:360px;height:360px;border-radius:50%;background:#E85D04;opacity:.06;"></div>
 
-  <!-- Sol üst dekor nokta grubu -->
-  <div style="position:absolute;top:52px;left:36px;display:grid;grid-template-columns:repeat(4,8px);gap:8px;opacity:.15;">
-    ${Array(16).fill('<div style="width:8px;height:8px;border-radius:50%;background:#E85D04;"></div>').join('')}
-  </div>
+  <!-- Çanta ikonları — açık renk dekor -->
+  <svg style="position:absolute;top:32px;right:56px;opacity:.10;" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width=".8">
+    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+  </svg>
+  <svg style="position:absolute;bottom:80px;right:32px;opacity:.09;" width="130" height="130" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width=".9">
+    <path d="M17 8H7L4.5 18a2 2 0 0 0 2 2.5h11a2 2 0 0 0 2-2.5L17 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>
+  </svg>
+  <svg style="position:absolute;top:200px;right:220px;opacity:.06;" width="90" height="90" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1">
+    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V5a5 5 0 0 0-10 0v1H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/><path d="M12 2v4"/><path d="M8 14h8"/>
+  </svg>
+  <svg style="position:absolute;bottom:160px;left:36px;opacity:.06;" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1">
+    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
+  </svg>
 
-  <!-- İçerik: dikey orta -->
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 80px;position:relative;z-index:1;">
+  <!-- Sol turuncu dikey aksent çizgisi -->
+  <div style="position:absolute;left:0;top:0;width:6px;height:100%;background:linear-gradient(180deg,#E85D04 0%,#FF9A3C 100%);"></div>
 
-    <!-- Logo veya marka ismi -->
-    <div style="margin-bottom:40px;">
+  <!-- İÇERİK: sol yanaşık layout -->
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 72px 0 88px;position:relative;z-index:2;">
+
+    <!-- Logo -->
+    <div style="margin-bottom:52px;">
       ${firm.logoDataUrl
-        ? `<img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:72px;object-fit:contain;">`
-        : `<div style="display:inline-block;padding:10px 24px;background:#1a1a1a;border-radius:10px;">
-             <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;">${esc(firm.name)}</span>
+        ? `<img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:60px;object-fit:contain;">`
+        : `<div style="display:inline-flex;align-items:center;gap:10px;">
+             <div style="width:8px;height:36px;background:#E85D04;border-radius:2px;"></div>
+             <span style="font-size:18px;font-weight:900;color:#1a1a1a;letter-spacing:-.5px;">${esc(firm.name)}</span>
            </div>`
       }
     </div>
 
-    <!-- Turuncu ayırıcı -->
-    <div style="width:48px;height:3px;background:#E85D04;border-radius:2px;margin-bottom:28px;"></div>
+    <!-- Etiket -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="width:28px;height:2px;background:#E85D04;border-radius:1px;"></div>
+      <span style="font-size:10px;font-weight:800;color:#E85D04;text-transform:uppercase;letter-spacing:4px;">Ürün Kataloğu</span>
+    </div>
 
-    <!-- ÜRÜN KATALOĞU etiketi -->
-    <div style="font-size:11px;font-weight:800;color:#E85D04;text-transform:uppercase;letter-spacing:4px;margin-bottom:20px;">Ürün Kataloğu</div>
-
-    <!-- Firma adı — ortalı, büyük ama kontrollü -->
-    <div style="font-size:38px;font-weight:900;color:#1a1a1a;letter-spacing:-1px;line-height:1.15;margin-bottom:28px;max-width:640px;">
+    <!-- Firma adı -->
+    <div style="font-size:40px;font-weight:900;color:#1a1a1a;letter-spacing:-1.5px;line-height:1.1;max-width:560px;margin-bottom:36px;">
       ${esc(firm.name)}
     </div>
 
-    <!-- Meta bilgi -->
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:36px;">
-      <span style="font-size:12px;color:#999;">${new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })}</span>
-      <span style="width:3px;height:3px;background:#E85D04;border-radius:50%;display:inline-block;"></span>
-      <span style="font-size:12px;color:#999;">${selectedCats.length} Kategori</span>
-      <span style="width:3px;height:3px;background:#E85D04;border-radius:50%;display:inline-block;"></span>
-      <span style="font-size:12px;color:#999;">${Object.values(productsByCat).reduce((s, ps) => s + ps.length, 0)} Ürün</span>
+    <!-- Stats kartlar -->
+    <div style="display:flex;gap:12px;margin-bottom:40px;">
+      <div style="background:#E85D04;border-radius:12px;padding:14px 22px;min-width:90px;">
+        <div style="font-size:26px;font-weight:900;color:#fff;line-height:1;">${selectedCats.length}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.75);margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Kategori</div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #ede9e3;border-radius:12px;padding:14px 22px;min-width:90px;box-shadow:0 2px 12px rgba(0,0,0,.05);">
+        <div style="font-size:26px;font-weight:900;color:#1a1a1a;line-height:1;">${selectedCats.reduce((s, c) => s + (productsByCat[c]?.length || 0), 0)}</div>
+        <div style="font-size:10px;color:#999;margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Ürün</div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #ede9e3;border-radius:12px;padding:14px 22px;box-shadow:0 2px 12px rgba(0,0,0,.05);">
+        <div style="font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.3;">${new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })}</div>
+        <div style="font-size:10px;color:#999;margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Tarih</div>
+      </div>
     </div>
 
-    <!-- Kategoriler -->
-    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:560px;">
+    <!-- Kategori etiketleri -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;max-width:520px;">
       ${selectedCats.map(c => `
-        <div style="padding:6px 16px;border-radius:20px;border:1.5px solid #e8e5e0;background:#f9f9f9;font-size:12px;font-weight:600;color:#444;">${esc(c)}</div>
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:8px;background:#fff;border:1.5px solid #e8e4de;font-size:12px;font-weight:600;color:#444;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          <span style="width:5px;height:5px;border-radius:50%;background:#E85D04;flex-shrink:0;display:inline-block;"></span>
+          ${esc(c)}
+        </div>
       `).join('')}
     </div>
   </div>
 
-  <!-- Alt bilgi şeridi -->
-  <div style="padding:18px 80px;display:flex;align-items:center;justify-content:center;gap:16px;border-top:1px solid #f0ede8;position:relative;z-index:1;">
-    ${firm.phone ? `<span style="font-size:11px;color:#bbb;">${esc(firm.phone)}</span><span style="font-size:11px;color:#ddd;">·</span>` : ''}
-    ${firm.email ? `<span style="font-size:11px;color:#bbb;">${esc(firm.email)}</span>` : ''}
+  <!-- Alt bilgi -->
+  <div style="padding:16px 88px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #ece8e2;position:relative;z-index:2;">
+    <div style="font-size:10px;color:#bbb;">${[firm.phone, firm.email].filter(Boolean).join('  ·  ')}</div>
+    <div style="font-size:10px;font-weight:700;color:#ccc;letter-spacing:1px;text-transform:uppercase;">${esc(firm.name)}</div>
   </div>
 </div>
 
