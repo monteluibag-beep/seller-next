@@ -553,10 +553,10 @@ export default function OffersPage() {
       {/* ══════════════ CREATE OFFER MODAL ══════════════ */}
       {open && (
         <div className="modal-overlay">
-          <div className="modal-box" style={{ maxWidth: 760, width: '100%' }}>
+          <div className="modal-box" style={{ maxWidth: 760, width: '100%', maxHeight: '95dvh', overflowY: 'auto' }}>
 
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10, padding: '16px 0 12px', borderBottom: '1px solid var(--border)' }}>
               <h3 style={{ fontSize: 16, fontWeight: 700 }}>Yeni Teklif Oluştur</h3>
               <button onClick={() => { setOpen(false); resetForm(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={20} /></button>
             </div>
@@ -739,6 +739,7 @@ export default function OffersPage() {
                             <input
                               type="number" min={1} value={item.qty}
                               onChange={e => setQty(item.productId, parseInt(e.target.value) || 1)}
+                              onFocus={e => e.target.select()}
                               style={{ width: 60, padding: '4px 6px', background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 6, fontSize: 13, color: 'var(--text-1)', textAlign: 'center' }}
                             />
                           </td>
