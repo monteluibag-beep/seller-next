@@ -13,6 +13,7 @@ import {
   IconTrendingUp, IconLoader2, IconUserCheck, IconEdit,
 } from '@tabler/icons-react';
 import { generateOfferHtml } from '@/lib/offerPdf';
+import Pagination from '@/components/Pagination';
 
 const DEFAULT_DISCOUNTS = [
   { qty: 1000, rate: 55 }, { qty: 500, rate: 50 }, { qty: 200, rate: 40 },
@@ -53,6 +54,8 @@ export default function OffersPage() {
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [showSubtotal, setShowSubtotal] = useState(true);
   const [offerSearch, setOfferSearch] = useState('');
+  const [offerPage, setOfferPage] = useState(1);
+  const PAGE_SIZE = 20;
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   // PDF preview modal
   const [pdfPreview, setPdfPreview] = useState<{ url: string; filename: string; offer: Offer } | null>(null);
@@ -454,6 +457,7 @@ export default function OffersPage() {
         o.customer.toLowerCase().includes(offerSearch.toLowerCase())
       )
     : offers;
+  const pagedOffers = filteredOffers.slice((offerPage - 1) * PAGE_SIZE, offerPage * PAGE_SIZE);
 
   const viewOffer = offers.find(o => o.id === viewId);
   const showDropdown = searchFocused && productSearch.length > 0 && filteredProducts.length > 0;
@@ -472,7 +476,7 @@ export default function OffersPage() {
               className="form-input"
               placeholder="Teklif no veya müşteri ara..."
               value={offerSearch}
-              onChange={e => setOfferSearch(e.target.value)}
+              onChange={e => { setOfferSearch(e.target.value); setOfferPage(1); }}
               style={{ paddingLeft: 32, height: 36, width: 220, fontSize: 13 }}
             />
           </div>
@@ -507,7 +511,7 @@ export default function OffersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredOffers.map(o => (
+                  {pagedOffers.map(o => (
                     <tr key={o.id}>
                       <td><code style={{ fontSize: 11, background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 4, color: 'var(--text-2)' }}>{o.no}</code></td>
                       <td style={{ fontWeight: 600 }}>{o.customer}</td>
@@ -569,7 +573,7 @@ export default function OffersPage() {
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Yükleniyor...</div>
             ) : filteredOffers.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>{offerSearch ? 'Arama sonucu bulunamadı' : 'Teklif bulunamadı'}</div>
-            ) : filteredOffers.map(o => {
+            ) : pagedOffers.map(o => {
               const offerSym = CURRENCY_SYMBOLS[(o as Offer & {currency?: Currency}).currency ?? 'TRY'] ?? '₺';
               return (
                 <div key={o.id} style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -616,6 +620,7 @@ export default function OffersPage() {
               );
             })}
           </div>
+          <Pagination page={offerPage} total={filteredOffers.length} pageSize={PAGE_SIZE} onChange={p => { setOfferPage(p); window.scrollTo(0,0); }} />
         </div>
       </div>
 

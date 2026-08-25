@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import * as XLSX from 'xlsx';
+import Pagination from '@/components/Pagination';
 
 type Filter = 'all' | 'in' | 'out';
 
@@ -47,6 +48,9 @@ export default function StockPage() {
 
   // Inline stock edit
   const [editingStockId, setEditingStockId] = useState<string | null>(null);
+  const [movePage, setMovePage] = useState(1);
+  const [stockPage, setStockPage] = useState(1);
+  const STOCK_PAGE_SIZE = 20;
   const [editingStockVal, setEditingStockVal] = useState(0);
   const [savingStock, setSavingStock] = useState(false);
 
@@ -69,6 +73,9 @@ export default function StockPage() {
   }
 
   const filtered = moves.filter(m => filter === 'all' || m.type === filter);
+  const pagedMoves = filtered.slice((movePage - 1) * STOCK_PAGE_SIZE, movePage * STOCK_PAGE_SIZE);
+  const sortedProducts = products.sort((a, b) => a.stock - b.stock);
+  const pagedProducts = sortedProducts.slice((stockPage - 1) * STOCK_PAGE_SIZE, stockPage * STOCK_PAGE_SIZE);
   const lowStock = products.filter(p => p.stock <= 10).sort((a, b) => a.stock - b.stock);
   const selectedProduct = products.find(p => p.id === form.productId);
 
@@ -454,7 +461,7 @@ export default function StockPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(m => (
+                  {pagedMoves.map(m => (
                     <tr key={m.id}>
                       <td>
                         {m.type === 'in'
@@ -473,6 +480,7 @@ export default function StockPage() {
                 </tbody>
               </table>
             )}
+            <Pagination page={movePage} total={filtered.length} pageSize={STOCK_PAGE_SIZE} onChange={p => { setMovePage(p); window.scrollTo(0,0); }} />
           </div>
         </div>
 
@@ -497,7 +505,7 @@ export default function StockPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.sort((a, b) => a.stock - b.stock).map(p => (
+                {pagedProducts.map(p => (
                   <tr key={p.id}>
                     <td style={{ fontWeight: 600 }}>{p.name}</td>
                     <td>
@@ -573,6 +581,7 @@ export default function StockPage() {
                 ))}
               </tbody>
             </table>
+            <Pagination page={stockPage} total={products.length} pageSize={STOCK_PAGE_SIZE} onChange={p => { setStockPage(p); window.scrollTo(0,0); }} />
           </div>
         </div>
       </div>

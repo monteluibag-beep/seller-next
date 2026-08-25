@@ -9,6 +9,7 @@ import type { Sale, SaleItem, Product } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { IconPlus, IconX, IconTrash, IconSearch, IconChevronDown } from '@tabler/icons-react';
 import { useRates } from '@/hooks/useRates';
+import Pagination from '@/components/Pagination';
 
 type Currency = 'TRY' | 'USD' | 'EUR' | 'GBP';
 const CUR_SYMBOLS: Record<Currency, string> = { TRY: '₺', USD: '$', EUR: '€', GBP: '£' };
@@ -41,6 +42,8 @@ export default function SalesPage() {
   const [productSearch, setProductSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [salePage, setSalePage] = useState(1);
+  const SALE_PAGE_SIZE = 20;
 
   // Kur: TRY → seçilen döviz
   const rate = currency === 'TRY' ? 1 : rates[currency as 'USD'|'EUR'|'GBP'];
@@ -72,6 +75,7 @@ export default function SalesPage() {
     p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
     p.code.toLowerCase().includes(productSearch.toLowerCase())
   );
+  const pagedSales = sales.slice((salePage - 1) * SALE_PAGE_SIZE, salePage * SALE_PAGE_SIZE);
 
   function addToCart(p: Product) {
     setCart(c => {
@@ -293,7 +297,7 @@ export default function SalesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sales.map(s => (
+                  {pagedSales.map(s => (
                     <tr key={s.id}>
                       <td style={{ fontWeight: 600 }}>{s.customer}</td>
                       <td style={{ color: '#888' }}>{s.items.length} kalem, {s.items.reduce((a, i) => a + i.qty, 0)} adet</td>
@@ -326,7 +330,7 @@ export default function SalesPage() {
               <div style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Yükleniyor...</div>
             ) : sales.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Satış kaydı bulunamadı</div>
-            ) : sales.map(s => (
+            ) : pagedSales.map(s => (
               <div key={s.id} style={{
                 padding: '14px 16px',
                 borderBottom: '1px solid var(--border)',
@@ -349,6 +353,7 @@ export default function SalesPage() {
               </div>
             ))}
           </div>
+          <Pagination page={salePage} total={sales.length} pageSize={SALE_PAGE_SIZE} onChange={p => { setSalePage(p); window.scrollTo(0,0); }} />
         </div>
       </div>
 
