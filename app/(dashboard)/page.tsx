@@ -103,7 +103,9 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
   const isAdmin = role === 'admin';
   const ozelUnitUsd = selected?.costUsd ? selected.costUsd * 1.25 : null;
   const ozelUnitTry = ozelUnitUsd ? ozelUnitUsd * rates.USD : null;
+  const ozelUnitEur = ozelUnitUsd ? ozelUnitUsd * rates.USD / rates.EUR : null;
   const ozelTotalUsd = ozelUnitUsd ? ozelUnitUsd * qtyNum : null;
+  const ozelTotalEur = ozelUnitEur ? ozelUnitEur * qtyNum : null;
 
   // Tüm tier basamakları — seçilen adet için hangisi uygulanıyor vurgu
   const sortedTiers = [...tiers].sort((a, b) => a.qty - b.qty);
@@ -279,9 +281,14 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
                     ${ozelUnitUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 1 }}>
-                    ₺{ozelUnitTry.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                    {qtyNum > 1 && <> · Toplam ${ozelTotalUsd!.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+                    €{ozelUnitEur!.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {' · '}₺{ozelUnitTry.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                   </div>
+                  {qtyNum > 1 && (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                      Toplam: ${ozelTotalUsd!.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · €{ozelTotalEur!.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
