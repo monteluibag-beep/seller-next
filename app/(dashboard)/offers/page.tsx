@@ -10,7 +10,7 @@ import { useRates } from '@/hooks/useRates';
 import {
   IconPlus, IconX, IconTrash, IconSearch, IconCheck, IconFileText,
   IconBrandWhatsapp, IconMail, IconPrinter, IconChevronDown,
-  IconTrendingUp, IconLoader2, IconUserCheck,
+  IconTrendingUp, IconLoader2, IconUserCheck, IconEdit,
 } from '@tabler/icons-react';
 import { generateOfferHtml } from '@/lib/offerPdf';
 
@@ -50,6 +50,7 @@ export default function OffersPage() {
   const [catAddMode, setCatAddMode] = useState(false); // kategori ile toplu ekleme modu
   const [selCat, setSelCat] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   // PDF preview modal
   const [pdfPreview, setPdfPreview] = useState<{ url: string; filename: string; offer: Offer } | null>(null);
@@ -174,28 +175,59 @@ export default function OffersPage() {
     setItems(c => c.map(i => i.productId === pid ? { ...i, finalPrice: price } : i));
   }
 
+  function openEditModal(offer: Offer) {
+    const offerCurrency = (offer as Offer & { currency?: Currency }).currency ?? 'TRY';
+    const offerRate = offerCurrency !== 'TRY' ? rates[offerCurrency as keyof typeof rates] : 1;
+    // Items are stored in TRY — convert to offer currency for display
+    const loadedItems: OfferItem[] = offer.items.map(i => ({
+      ...i,
+      listPrice: parseFloat((i.listPrice / offerRate).toFixed(2)),
+      finalPrice: parseFloat((i.finalPrice / offerRate).toFixed(2)),
+    }));
+    setEditingOffer(offer);
+    setCustomer(offer.customer);
+    setNote(offer.note || '');
+    setCurrency(offerCurrency);
+    prevCurrencyRef.current = offerCurrency;
+    setDiscountEnabled(offer.discountEnabled ?? false);
+    setItems(loadedItems);
+    setOpen(true);
+  }
+
   async function save() {
     if (!customer.trim() || items.length === 0) return;
     setSaving(true);
     try {
-      const no = `TKL-${Date.now().toString().slice(-6)}`;
-      // Store prices as TRY equivalent for consistency
       const itemsToSave: OfferItem[] = computedItems.map(i => ({
         ...i,
         listPrice: parseFloat(toTRY(i.listPrice).toFixed(2)),
         finalPrice: parseFloat(toTRY(i.finalPrice).toFixed(2)),
       }));
       const totalTRY = parseFloat(toTRY(total).toFixed(2));
-      await addDoc(collection(db, 'offers'), {
-        no, customer, note,
-        by: user?.displayName || user?.email?.split('@')[0] || 'admin',
-        items: itemsToSave,
-        total: totalTRY,
-        currency, exchangeRate: currency !== 'TRY' ? rates[currency as keyof typeof rates] : 1,
-        discountEnabled, discountRate,
-        status: 'pending',
-        date: serverTimestamp(),
-      });
+
+      if (editingOffer) {
+        // Güncelleme
+        await updateDoc(doc(db, 'offers', editingOffer.id!), {
+          customer, note,
+          items: itemsToSave,
+          total: totalTRY,
+          currency, exchangeRate: currency !== 'TRY' ? rates[currency as keyof typeof rates] : 1,
+          discountEnabled, discountRate,
+        });
+      } else {
+        // Yeni teklif
+        const no = `TKL-${Date.now().toString().slice(-6)}`;
+        await addDoc(collection(db, 'offers'), {
+          no, customer, note,
+          by: user?.displayName || user?.email?.split('@')[0] || 'admin',
+          items: itemsToSave,
+          total: totalTRY,
+          currency, exchangeRate: currency !== 'TRY' ? rates[currency as keyof typeof rates] : 1,
+          discountEnabled, discountRate,
+          status: 'pending',
+          date: serverTimestamp(),
+        });
+      }
       setOpen(false);
       resetForm();
       load();
@@ -209,6 +241,7 @@ export default function OffersPage() {
     setDiscountEnabled(false); setProductSearch('');
     setCurrency('TRY');
     prevCurrencyRef.current = 'TRY';
+    setEditingOffer(null);
   }
 
   async function approve(id: string) {
@@ -479,6 +512,7 @@ export default function OffersPage() {
                               : <IconPrinter size={13} />
                             }
                           </button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => openEditModal(o)} title="Düzenle"><IconEdit size={13} /></button>
                           {o.status === 'pending' && (
                             <>
                               <button className="btn btn-sm" style={{ background: 'rgba(34,197,94,.12)', color: '#4ADE80' }} onClick={() => approve(o.id!)} title="Onayla"><IconCheck size={13} /></button>
@@ -534,6 +568,7 @@ export default function OffersPage() {
                       >
                         {pdfLoading === o.id ? <IconLoader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <IconPrinter size={13} />}
                       </button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => openEditModal(o)} title="Düzenle"><IconEdit size={13} /></button>
                       {o.status === 'pending' && (
                         <>
                           <button className="btn btn-sm" style={{ background: 'rgba(34,197,94,.12)', color: '#4ADE80' }} onClick={() => approve(o.id!)} title="Onayla"><IconCheck size={13} /></button>
@@ -557,7 +592,7 @@ export default function OffersPage() {
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10, padding: '16px 0 12px', borderBottom: '1px solid var(--border)' }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700 }}>Yeni Teklif Oluştur</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>{editingOffer ? `Teklif Düzenle — ${editingOffer.no}` : 'Yeni Teklif Oluştur'}</h3>
               <button onClick={() => { setOpen(false); resetForm(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={20} /></button>
             </div>
 
