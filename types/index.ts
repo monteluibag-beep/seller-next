@@ -72,6 +72,7 @@ export interface Offer {
   date: unknown;
   discountEnabled: boolean;
   discountRate?: number;
+  showSubtotal?: boolean;
   note?: string;
 }
 

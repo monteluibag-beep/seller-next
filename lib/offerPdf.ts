@@ -78,15 +78,18 @@ export function generateOfferHtml(offer: Offer, firm: FirmInfo): string {
       </tr>`;
   }).join('');
 
-  const discountRows = dr > 0 ? `
+  const showSubtotal = (offer as Offer & { showSubtotal?: boolean }).showSubtotal !== false;
+  const subtotalRow = showSubtotal ? `
     <tr class="sub-row">
       <td colspan="5" class="r" style="color:#555;">Ara Toplam</td>
       <td class="r" style="color:#555;">${sym}${fmtNum(sub)}</td>
-    </tr>
+    </tr>` : '';
+  const discountRows = dr > 0 ? `
+    ${subtotalRow}
     <tr class="sub-row">
       <td colspan="5" class="r" style="color:#16A34A;">İskonto (%${dr})</td>
       <td class="r" style="color:#16A34A;">-${sym}${fmtNum(sub - offer.total)}</td>
-    </tr>` : '';
+    </tr>` : subtotalRow;
 
   const termsHtml = firm.terms ? `
     <div class="info-section">

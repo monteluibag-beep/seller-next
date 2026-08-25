@@ -51,6 +51,7 @@ export default function OffersPage() {
   const [selCat, setSelCat] = useState('');
   const [saving, setSaving] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  const [showSubtotal, setShowSubtotal] = useState(true);
   const [offerSearch, setOfferSearch] = useState('');
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   // PDF preview modal
@@ -191,6 +192,7 @@ export default function OffersPage() {
     setCurrency(offerCurrency);
     prevCurrencyRef.current = offerCurrency;
     setDiscountEnabled(offer.discountEnabled ?? false);
+    setShowSubtotal(offer.showSubtotal !== false);
     setItems(loadedItems);
     setOpen(true);
   }
@@ -207,16 +209,15 @@ export default function OffersPage() {
       const totalTRY = parseFloat(toTRY(total).toFixed(2));
 
       if (editingOffer) {
-        // Güncelleme
         await updateDoc(doc(db, 'offers', editingOffer.id!), {
           customer, note,
           items: itemsToSave,
           total: totalTRY,
           currency, exchangeRate: currency !== 'TRY' ? rates[currency as keyof typeof rates] : 1,
           discountEnabled, discountRate,
+          showSubtotal,
         });
       } else {
-        // Yeni teklif
         const no = `TKL-${Date.now().toString().slice(-6)}`;
         await addDoc(collection(db, 'offers'), {
           no, customer, note,
@@ -225,6 +226,7 @@ export default function OffersPage() {
           total: totalTRY,
           currency, exchangeRate: currency !== 'TRY' ? rates[currency as keyof typeof rates] : 1,
           discountEnabled, discountRate,
+          showSubtotal,
           status: 'pending',
           date: serverTimestamp(),
         });
@@ -242,6 +244,7 @@ export default function OffersPage() {
     setDiscountEnabled(false); setProductSearch('');
     setCurrency('TRY');
     prevCurrencyRef.current = 'TRY';
+    setShowSubtotal(true);
     setEditingOffer(null);
   }
 
@@ -920,6 +923,10 @@ export default function OffersPage() {
             {/* Bottom row: discount + totals */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
               <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, marginBottom: 6 }}>
+                  <input type="checkbox" checked={showSubtotal} onChange={e => setShowSubtotal(e.target.checked)} />
+                  <span style={{ color: 'var(--text-2)' }}>Teklif çıktısında ara toplam göster</span>
+                </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
                   <input type="checkbox" checked={discountEnabled} onChange={e => setDiscountEnabled(e.target.checked)} />
                   <span style={{ color: 'var(--text-2)' }}>İskonto Uygula</span>
