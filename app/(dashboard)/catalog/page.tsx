@@ -87,11 +87,12 @@ function generateCatalogHtml(
         </div>
 
         <!-- Alt bilgi -->
-        <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-size:11px;color:#9ca3af;">${esc(firm.name)} · ${esc(firm.phone)} · ${esc(firm.email)}</div>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="font-size:11px;color:#9ca3af;">${new Date().toLocaleDateString('tr-TR')}</div>
-            <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#E85D04;color:#fff;font-size:11px;font-weight:800;">${catIdx + 2}</div>
+        <div style="margin-top:40px;padding-top:14px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? '  ·  ' + esc(firm.phone) : ''}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(cat)}</div>
+            <div style="width:1px;height:14px;background:#e5e7eb;"></div>
+            <div style="font-size:11px;font-weight:700;color:#E85D04;min-width:20px;text-align:right;">${catIdx + 2}</div>
           </div>
         </div>
       </div>
@@ -117,42 +118,39 @@ function generateCatalogHtml(
 <!-- KAPAK SAYFASI -->
 <div style="height:100vh;background:#FAFAF8;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
 
-  <!-- === DEKORATIF ÇANTA İKONLARI (SVG) === -->
+  <!-- === ARKA PLAN: dağılmış küçük çanta ikonları === -->
+  <!-- satır 1 -->
+  <svg style="position:absolute;top:28px;left:55px;opacity:.07;" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  <svg style="position:absolute;top:18px;left:210px;opacity:.05;" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M17 8H7L4.5 18a2 2 0 0 0 2 2.5h11a2 2 0 0 0 2-2.5L17 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+  <svg style="position:absolute;top:40px;left:390px;opacity:.06;" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V5a5 5 0 0 0-10 0v1H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/><path d="M12 2v4"/><path d="M8 14h8"/></svg>
+  <svg style="position:absolute;top:24px;right:280px;opacity:.05;" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+  <svg style="position:absolute;top:32px;right:80px;opacity:.08;" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  <!-- satır 2 -->
+  <svg style="position:absolute;top:160px;left:20px;opacity:.05;" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M17 8H7L4.5 18a2 2 0 0 0 2 2.5h11a2 2 0 0 0 2-2.5L17 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+  <svg style="position:absolute;top:140px;right:140px;opacity:.06;" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  <svg style="position:absolute;top:180px;right:30px;opacity:.07;" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V5a5 5 0 0 0-10 0v1H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/><path d="M12 2v4"/></svg>
+  <!-- satır 3 (alt) -->
+  <svg style="position:absolute;bottom:160px;left:40px;opacity:.06;" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  <svg style="position:absolute;bottom:200px;left:220px;opacity:.05;" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M17 8H7L4.5 18a2 2 0 0 0 2 2.5h11a2 2 0 0 0 2-2.5L17 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+  <svg style="position:absolute;bottom:140px;right:200px;opacity:.06;" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+  <svg style="position:absolute;bottom:100px;right:60px;opacity:.07;" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  <!-- satır 4 (en alt) -->
+  <svg style="position:absolute;bottom:32px;left:120px;opacity:.05;" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V5a5 5 0 0 0-10 0v1H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/><path d="M12 2v4"/></svg>
+  <svg style="position:absolute;bottom:20px;right:320px;opacity:.06;" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M17 8H7L4.5 18a2 2 0 0 0 2 2.5h11a2 2 0 0 0 2-2.5L17 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
 
-  <!-- Dekor: sağ yarım daire turuncu -->
-  <div style="position:absolute;top:-80px;right:-180px;width:460px;height:460px;border-radius:50%;background:linear-gradient(135deg,#E85D04,#FF9A3C);opacity:.10;"></div>
-  <div style="position:absolute;bottom:-100px;right:-120px;width:360px;height:360px;border-radius:50%;background:#E85D04;opacity:.06;"></div>
-
-  <!-- Çanta ikonları — açık renk dekor -->
-  <svg style="position:absolute;top:32px;right:56px;opacity:.10;" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width=".8">
-    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
-  </svg>
-  <svg style="position:absolute;bottom:80px;right:32px;opacity:.09;" width="130" height="130" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width=".9">
-    <path d="M17 8H7L4.5 18a2 2 0 0 0 2 2.5h11a2 2 0 0 0 2-2.5L17 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>
-  </svg>
-  <svg style="position:absolute;top:200px;right:220px;opacity:.06;" width="90" height="90" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1">
-    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V5a5 5 0 0 0-10 0v1H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/><path d="M12 2v4"/><path d="M8 14h8"/>
-  </svg>
-  <svg style="position:absolute;bottom:160px;left:36px;opacity:.06;" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1">
-    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
-  </svg>
-
-  <!-- Sol turuncu dikey aksent çizgisi -->
+  <!-- Sol turuncu dikey aksent -->
   <div style="position:absolute;left:0;top:0;width:6px;height:100%;background:linear-gradient(180deg,#E85D04 0%,#FF9A3C 100%);"></div>
+  <!-- Sağ üst hafif daire -->
+  <div style="position:absolute;top:-100px;right:-100px;width:380px;height:380px;border-radius:50%;background:rgba(232,93,4,.06);"></div>
 
-  <!-- İÇERİK: sol yanaşık layout -->
+  <!-- İÇERİK -->
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 72px 0 88px;position:relative;z-index:2;">
 
-    <!-- Logo -->
-    <div style="margin-bottom:52px;">
-      ${firm.logoDataUrl
-        ? `<img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:60px;object-fit:contain;">`
-        : `<div style="display:inline-flex;align-items:center;gap:10px;">
-             <div style="width:8px;height:36px;background:#E85D04;border-radius:2px;"></div>
-             <span style="font-size:18px;font-weight:900;color:#1a1a1a;letter-spacing:-.5px;">${esc(firm.name)}</span>
-           </div>`
-      }
-    </div>
+    <!-- Logo (sadece logo varsa) -->
+    ${firm.logoDataUrl
+      ? `<div style="margin-bottom:48px;"><img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:60px;object-fit:contain;"></div>`
+      : ''
+    }
 
     <!-- Etiket -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
@@ -160,12 +158,12 @@ function generateCatalogHtml(
       <span style="font-size:10px;font-weight:800;color:#E85D04;text-transform:uppercase;letter-spacing:4px;">Ürün Kataloğu</span>
     </div>
 
-    <!-- Firma adı -->
-    <div style="font-size:40px;font-weight:900;color:#1a1a1a;letter-spacing:-1.5px;line-height:1.1;max-width:560px;margin-bottom:36px;">
+    <!-- Firma adı — tek seferlik -->
+    <div style="font-size:40px;font-weight:900;color:#1a1a1a;letter-spacing:-1.5px;line-height:1.1;max-width:580px;margin-bottom:36px;">
       ${esc(firm.name)}
     </div>
 
-    <!-- Stats kartlar -->
+    <!-- Stats kartları -->
     <div style="display:flex;gap:12px;margin-bottom:40px;">
       <div style="background:#E85D04;border-radius:12px;padding:14px 22px;min-width:90px;">
         <div style="font-size:26px;font-weight:900;color:#fff;line-height:1;">${selectedCats.length}</div>
@@ -174,10 +172,6 @@ function generateCatalogHtml(
       <div style="background:#fff;border:1.5px solid #ede9e3;border-radius:12px;padding:14px 22px;min-width:90px;box-shadow:0 2px 12px rgba(0,0,0,.05);">
         <div style="font-size:26px;font-weight:900;color:#1a1a1a;line-height:1;">${selectedCats.reduce((s, c) => s + (productsByCat[c]?.length || 0), 0)}</div>
         <div style="font-size:10px;color:#999;margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Ürün</div>
-      </div>
-      <div style="background:#fff;border:1.5px solid #ede9e3;border-radius:12px;padding:14px 22px;box-shadow:0 2px 12px rgba(0,0,0,.05);">
-        <div style="font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.3;">${new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })}</div>
-        <div style="font-size:10px;color:#999;margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Tarih</div>
       </div>
     </div>
 
@@ -192,10 +186,9 @@ function generateCatalogHtml(
     </div>
   </div>
 
-  <!-- Alt bilgi -->
-  <div style="padding:16px 88px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #ece8e2;position:relative;z-index:2;">
-    <div style="font-size:10px;color:#bbb;">${[firm.phone, firm.email].filter(Boolean).join('  ·  ')}</div>
-    <div style="font-size:10px;font-weight:700;color:#ccc;letter-spacing:1px;text-transform:uppercase;">${esc(firm.name)}</div>
+  <!-- Alt: tarih ortada -->
+  <div style="padding:18px 88px;display:flex;align-items:center;justify-content:center;border-top:1px solid #ece8e2;position:relative;z-index:2;">
+    <span style="font-size:11px;color:#bbb;font-weight:500;">${new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })}</span>
   </div>
 </div>
 
