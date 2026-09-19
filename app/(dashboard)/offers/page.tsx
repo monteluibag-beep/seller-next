@@ -627,7 +627,7 @@ export default function OffersPage() {
       {/* ══════════════ CREATE OFFER MODAL ══════════════ */}
       {open && (
         <div className="modal-overlay">
-          <div className="modal-box" style={{ maxWidth: 760, width: '100%', maxHeight: '95dvh', overflowY: 'auto', overflowX: 'hidden' }}>
+          <div className="modal-box" style={{ maxWidth: 960, width: '100%', maxHeight: '95dvh', overflowY: 'auto', overflowX: 'hidden' }}>
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10, padding: '16px 0 12px', borderBottom: '1px solid var(--border)' }}>
@@ -734,7 +734,7 @@ export default function OffersPage() {
                     background: 'var(--surface-2)',
                     border: '1px solid var(--border-2)',
                     borderRadius: 10, marginTop: 4,
-                    maxHeight: 220, overflowY: 'auto',
+                    maxHeight: 360, overflowY: 'auto',
                     boxShadow: '0 8px 24px rgba(0,0,0,.4)',
                   }}>
                     {filteredProducts.map((p, idx) => (
@@ -742,8 +742,8 @@ export default function OffersPage() {
                         key={p.id}
                         onMouseDown={() => addItem(p)}
                         style={{
-                          padding: '8px 12px', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 14px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 12,
                           borderBottom: idx < filteredProducts.length - 1 ? '1px solid var(--border)' : 'none',
                           fontSize: 13, transition: 'background .1s',
                         }}
@@ -759,7 +759,7 @@ export default function OffersPage() {
                         }
                         {/* Ürün bilgisi */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
                           <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
                             {p.code && <code style={{ fontSize: 10, background: 'var(--surface-3)', padding: '1px 5px', borderRadius: 3, color: 'var(--text-3)' }}>{p.code}</code>}
                             {p.catName && <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{p.catName}</span>}
