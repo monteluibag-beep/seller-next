@@ -254,7 +254,10 @@ function ProductsPageInner() {
   }
 
   const filtered = useMemo(() => products.filter(p => {
-    if (nocostFilter && p.cost && p.cost > 0) return false;
+    if (nocostFilter) {
+      const hasCost = (p.cost && p.cost > 0) || (p.costUsd && p.costUsd > 0);
+      if (hasCost) return false;
+    }
     if (catFilter && p.catName !== catFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
