@@ -707,7 +707,7 @@ export default function DashboardPage() {
             <div className="stat-value">{loading ? '—' : stats?.lowStock ?? 0}</div>
             <div className="stat-sub">yenileme gerekli · görüntüle →</div>
           </Link>
-          <Link href="/products" className="stat-card" style={{ borderColor: 'rgba(139,92,246,.25)', background: 'rgba(139,92,246,.05)', textDecoration: 'none', cursor: 'pointer' }}>
+          <Link href="/products?nocost=1" className="stat-card" style={{ borderColor: 'rgba(139,92,246,.25)', background: 'rgba(139,92,246,.05)', textDecoration: 'none', cursor: 'pointer' }}>
             <div className="stat-icon" style={{ background: 'rgba(139,92,246,.15)', color: '#8B5CF6' }}><IconTool size={20} /></div>
             <div className="stat-label">İmalat Fiyatı Eksik</div>
             <div className="stat-value" style={{ color: '#8B5CF6' }}>{loading ? '—' : stats?.noCostCount ?? 0}</div>

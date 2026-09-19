@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
@@ -172,12 +173,15 @@ function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label,
 }
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams();
+  const nocostParam = searchParams.get('nocost') === '1';
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>(''); // '' = Tümü
+  const [nocostFilter, setNocostFilter] = useState(nocostParam);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const [open, setOpen] = useState(false);
@@ -249,19 +253,20 @@ export default function ProductsPage() {
   }
 
   const filtered = useMemo(() => products.filter(p => {
+    if (nocostFilter && p.cost && p.cost > 0) return false;
     if (catFilter && p.catName !== catFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (p.name || '').toLowerCase().includes(q) ||
            (p.code || '').toLowerCase().includes(q) ||
            (p.barcode || '').includes(search);
-  }), [products, search, catFilter]);
+  }), [products, search, catFilter, nocostFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // search veya filtre değişince 1. sayfaya dön
-  useEffect(() => { setPage(1); }, [search, catFilter]);
+  useEffect(() => { setPage(1); }, [search, catFilter, nocostFilter]);
 
   // Kategorileri ürünlerde kullanılma sırasına göre listele
   const usedCatNames = [...new Set(products.map(p => p.catName).filter(Boolean))];
@@ -787,6 +792,21 @@ export default function ProductsPage() {
                   </option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {/* Nocost filter badge */}
+          {nocostFilter && (
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ background: 'rgba(139,92,246,.15)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,.3)', borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>
+                İmalat Fiyatı Eksik
+              </span>
+              <button
+                onClick={() => setNocostFilter(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 12, padding: '2px 6px', borderRadius: 6 }}
+              >
+                ✕ Filtreyi kaldır
+              </button>
             </div>
           )}
 
