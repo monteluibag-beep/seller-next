@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
@@ -173,10 +173,6 @@ function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label,
 }
 
 function ProductsPageInner() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const nocostParam = searchParams.get('nocost') === '1';
-  const [nocostFilter, setNocostFilter] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,26 +250,19 @@ function ProductsPageInner() {
   }
 
   const filtered = useMemo(() => products.filter(p => {
-    if (nocostFilter) {
-      const hasCost = (p.cost && p.cost > 0) || (p.costUsd && p.costUsd > 0);
-      if (hasCost) return false;
-    }
     if (catFilter && p.catName !== catFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (p.name || '').toLowerCase().includes(q) ||
            (p.code || '').toLowerCase().includes(q) ||
            (p.barcode || '').includes(search);
-  }), [products, search, catFilter, nocostFilter]);
+  }), [products, search, catFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // URL parametresinden nocost filtresi başlat
-  useEffect(() => { if (nocostParam) setNocostFilter(true); }, [nocostParam]);
-
   // search veya filtre değişince 1. sayfaya dön
-  useEffect(() => { setPage(1); }, [search, catFilter, nocostFilter]);
+  useEffect(() => { setPage(1); }, [search, catFilter]);
 
   // Kategorileri ürünlerde kullanılma sırasına göre listele
   const usedCatNames = [...new Set(products.map(p => p.catName).filter(Boolean))];
@@ -800,26 +789,12 @@ function ProductsPageInner() {
                 ))}
               </select>
             )}
-            <button
-              onClick={() => setNocostFilter(v => !v)}
-              style={{
-                height: 36, padding: '0 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                border: nocostFilter ? '1.5px solid #8B5CF6' : '1.5px solid var(--border)',
-                background: nocostFilter ? 'rgba(139,92,246,.15)' : 'var(--surface-2)',
-                color: nocostFilter ? '#8B5CF6' : 'var(--text-2)',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8B5CF6', display: 'inline-block' }} />
-              İmalat Fiyatı Eksik
-              {nocostFilter && <span style={{ marginLeft: 2 }}>✕</span>}
-            </button>
-            {(catFilter || nocostFilter) && (
+            {catFilter && (
               <button
-                onClick={() => { setCatFilter(''); setNocostFilter(false); }}
+                onClick={() => setCatFilter('')}
                 style={{ height: 36, padding: '0 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)' }}
               >
-                Filtreleri Temizle
+                Filtreyi Temizle
               </button>
             )}
           </div>
