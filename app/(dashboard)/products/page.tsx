@@ -175,7 +175,8 @@ function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label,
 function ProductsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const nocostFilter = searchParams.get('nocost') === '1';
+  const nocostParam = searchParams.get('nocost') === '1';
+  const [nocostFilter, setNocostFilter] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,8 +266,11 @@ function ProductsPageInner() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // URL parametresinden nocost filtresi başlat
+  useEffect(() => { if (nocostParam) setNocostFilter(true); }, [nocostParam]);
+
   // search veya filtre değişince 1. sayfaya dön
-  useEffect(() => { setPage(1); }, [search, catFilter, nocostFilter]); // nocostFilter is derived from URL
+  useEffect(() => { setPage(1); }, [search, catFilter, nocostFilter]);
 
   // Kategorileri ürünlerde kullanılma sırasına göre listele
   const usedCatNames = [...new Set(products.map(p => p.catName).filter(Boolean))];
@@ -776,14 +780,14 @@ function ProductsPageInner() {
             </div>
           </div>
 
-          {/* Kategori filtre dropdown */}
-          {usedCatNames.length > 0 && (
-            <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--border)' }}>
+          {/* Filtre çubuğu */}
+          <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {usedCatNames.length > 0 && (
               <select
                 className="form-input"
                 value={catFilter}
                 onChange={e => setCatFilter(e.target.value)}
-                style={{ maxWidth: 260, height: 36, fontSize: 13 }}
+                style={{ height: 36, fontSize: 13, minWidth: 180 }}
               >
                 <option value="">Tüm Kategoriler ({products.length})</option>
                 {usedCatNames.map(cat => (
@@ -792,23 +796,30 @@ function ProductsPageInner() {
                   </option>
                 ))}
               </select>
-            </div>
-          )}
-
-          {/* Nocost filter badge */}
-          {nocostFilter && (
-            <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ background: 'rgba(139,92,246,.15)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,.3)', borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>
-                İmalat Fiyatı Eksik
-              </span>
+            )}
+            <button
+              onClick={() => setNocostFilter(v => !v)}
+              style={{
+                height: 36, padding: '0 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                border: nocostFilter ? '1.5px solid #8B5CF6' : '1.5px solid var(--border)',
+                background: nocostFilter ? 'rgba(139,92,246,.15)' : 'var(--surface-2)',
+                color: nocostFilter ? '#8B5CF6' : 'var(--text-2)',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8B5CF6', display: 'inline-block' }} />
+              İmalat Fiyatı Eksik
+              {nocostFilter && <span style={{ marginLeft: 2 }}>✕</span>}
+            </button>
+            {(catFilter || nocostFilter) && (
               <button
-                onClick={() => router.push('/products')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 12, padding: '2px 6px', borderRadius: 6 }}
+                onClick={() => { setCatFilter(''); setNocostFilter(false); }}
+                style={{ height: 36, padding: '0 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)' }}
               >
-                ✕ Filtreyi kaldır
+                Filtreleri Temizle
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Desktop table */}
           <div className="table-wrap mob-hide-table">
