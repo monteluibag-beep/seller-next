@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
@@ -172,16 +172,16 @@ function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label,
   );
 }
 
-export default function ProductsPage() {
+function ProductsPageInner() {
   const searchParams = useSearchParams();
-  const nocostParam = searchParams.get('nocost') === '1';
+  const router = useRouter();
+  const nocostFilter = searchParams.get('nocost') === '1';
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>(''); // '' = Tümü
-  const [nocostFilter, setNocostFilter] = useState(nocostParam);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const [open, setOpen] = useState(false);
@@ -266,7 +266,7 @@ export default function ProductsPage() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // search veya filtre değişince 1. sayfaya dön
-  useEffect(() => { setPage(1); }, [search, catFilter, nocostFilter]);
+  useEffect(() => { setPage(1); }, [search, catFilter, nocostFilter]); // nocostFilter is derived from URL
 
   // Kategorileri ürünlerde kullanılma sırasına göre listele
   const usedCatNames = [...new Set(products.map(p => p.catName).filter(Boolean))];
@@ -802,7 +802,7 @@ export default function ProductsPage() {
                 İmalat Fiyatı Eksik
               </span>
               <button
-                onClick={() => setNocostFilter(false)}
+                onClick={() => router.push('/products')}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 12, padding: '2px 6px', borderRadius: 6 }}
               >
                 ✕ Filtreyi kaldır
@@ -1564,5 +1564,13 @@ export default function ProductsPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProductsPageInner />
+    </Suspense>
   );
 }
