@@ -16,12 +16,12 @@ import {
 } from '@tabler/icons-react';
 
 const ALL_NAV = [
-  { href: '/', label: 'Ana Ekran', icon: IconLayoutDashboard, group: 'Genel', roles: ['admin', 'sales'] },
-  { href: '/products', label: 'Ürünler', icon: IconPackage, group: 'Yönetim', roles: ['admin', 'sales'] },
-  { href: '/stock', label: 'Stoklar', icon: IconStack2, group: 'Yönetim', roles: ['admin', 'sales'] },
-  { href: '/sales', label: 'Satışlar', icon: IconReceipt, group: 'Yönetim', roles: ['admin', 'sales'] },
-  { href: '/offers', label: 'Teklifler', icon: IconFileText, group: 'Yönetim', roles: ['admin', 'sales'] },
-  { href: '/catalog', label: 'Katalog', icon: IconBook2, group: 'Yönetim', roles: ['admin', 'sales'] },
+  { href: '/', label: 'Ana Ekran', icon: IconLayoutDashboard, group: 'Genel', roles: ['admin', 'sales', 'mudur'] },
+  { href: '/products', label: 'Ürünler', icon: IconPackage, group: 'Yönetim', roles: ['admin', 'sales', 'mudur'] },
+  { href: '/stock', label: 'Stoklar', icon: IconStack2, group: 'Yönetim', roles: ['admin', 'sales', 'mudur'] },
+  { href: '/sales', label: 'Satışlar', icon: IconReceipt, group: 'Yönetim', roles: ['admin', 'sales', 'mudur'] },
+  { href: '/offers', label: 'Teklifler', icon: IconFileText, group: 'Yönetim', roles: ['admin', 'sales', 'mudur'] },
+  { href: '/catalog', label: 'Katalog', icon: IconBook2, group: 'Yönetim', roles: ['admin', 'sales', 'mudur'] },
   { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, group: 'Yönetim', roles: ['admin', 'mudur', 'atolye', 'sales'] },
   { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, group: 'Yönetim', roles: ['admin', 'mudur'] },
   { href: '/categories', label: 'Kategoriler', icon: IconTag, group: 'Sistem', roles: ['admin'] },

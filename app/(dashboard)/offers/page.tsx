@@ -760,10 +760,10 @@ export default function OffersPage() {
                         {/* Ürün bilgisi */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                          <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
-                            {p.code && <code style={{ fontSize: 10, background: 'var(--surface-3)', padding: '1px 5px', borderRadius: 3, color: 'var(--text-3)' }}>{p.code}</code>}
-                            {p.catName && <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{p.catName}</span>}
-                            <span style={{ fontSize: 10, color: p.stock <= 5 ? '#F87171' : 'var(--text-3)' }}>Stok: {p.stock}</span>
+                          <div style={{ display: 'flex', gap: 5, marginTop: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {p.code && <code style={{ fontSize: 10, background: 'var(--surface-3)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-3)', lineHeight: 1.4 }}>{p.code}</code>}
+                            {p.catName && <span style={{ fontSize: 10, background: 'rgba(232,93,4,.12)', color: 'var(--or)', border: '1px solid rgba(232,93,4,.25)', padding: '2px 6px', borderRadius: 4, lineHeight: 1.4, whiteSpace: 'nowrap' }}>{p.catName}</span>}
+                            <span style={{ fontSize: 10, color: p.stock <= 5 ? '#F87171' : 'var(--text-3)', lineHeight: 1.4 }}>Stok: {p.stock}</span>
                           </div>
                         </div>
                         {/* Fiyat */}

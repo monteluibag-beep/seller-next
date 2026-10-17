@@ -11,11 +11,11 @@ import {
 } from '@tabler/icons-react';
 
 const ALL_NAV = [
-  { href: '/', label: 'Ana Ekran', icon: IconLayoutDashboard, roles: ['admin', 'sales'] },
-  { href: '/products', label: 'Ürünler', icon: IconPackage, roles: ['admin', 'sales'] },
-  { href: '/stock', label: 'Stoklar', icon: IconStack2, roles: ['admin', 'sales'] },
-  { href: '/sales', label: 'Satışlar', icon: IconReceipt, roles: ['admin', 'sales'] },
-  { href: '/offers', label: 'Teklifler', icon: IconFileText, roles: ['admin', 'sales'] },
+  { href: '/', label: 'Ana Ekran', icon: IconLayoutDashboard, roles: ['admin', 'sales', 'mudur'] },
+  { href: '/products', label: 'Ürünler', icon: IconPackage, roles: ['admin', 'sales', 'mudur'] },
+  { href: '/stock', label: 'Stoklar', icon: IconStack2, roles: ['admin', 'sales', 'mudur'] },
+  { href: '/sales', label: 'Satışlar', icon: IconReceipt, roles: ['admin', 'sales', 'mudur'] },
+  { href: '/offers', label: 'Teklifler', icon: IconFileText, roles: ['admin', 'sales', 'mudur'] },
   { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, roles: ['admin', 'mudur', 'atolye', 'sales'] },
   { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, roles: ['admin', 'mudur'] },
   { href: '/categories', label: 'Kategoriler', icon: IconTag, roles: ['admin'] },
