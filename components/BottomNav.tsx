@@ -11,9 +11,9 @@ import { useAuth } from '@/hooks/useAuth';
 
 const ALL_ITEMS = [
   { href: '/', label: 'Ana', icon: IconLayoutDashboard, roles: ['admin', 'sales', 'mudur'] },
-  { href: '/products', label: 'Ürünler', icon: IconPackage, roles: ['admin', 'sales'] },
-  { href: '/offers', label: 'Teklifler', icon: IconFileText, roles: ['admin', 'sales'] },
-  { href: '/sales', label: 'Satışlar', icon: IconReceipt, roles: ['admin', 'sales'] },
+  { href: '/products', label: 'Ürünler', icon: IconPackage, roles: ['admin', 'sales', 'mudur'] },
+  { href: '/offers', label: 'Teklifler', icon: IconFileText, roles: ['admin', 'sales', 'mudur'] },
+  { href: '/sales', label: 'Satışlar', icon: IconReceipt, roles: ['admin', 'sales', 'mudur'] },
   { href: '/fason', label: 'Fason', icon: IconClipboardList, roles: ['atolye'] },
 ];
 
