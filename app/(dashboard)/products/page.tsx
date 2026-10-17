@@ -1147,14 +1147,30 @@ function ProductsPageInner() {
                   />
                   {(() => {
                     const base = (form.costUsd ?? 0) > 0 ? form.costUsd! * usdRate : form.cost;
-                    return base > 0 ? (
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, lineHeight: 1.4 }}>
-                        {listManual
-                          ? `Tavsiye: ₺${recommendedList(base).toLocaleString('tr-TR')} · %${MIN_MARGIN} kâr`
-                          : `%${MIN_MARGIN} kâr · %${MAX_DISCOUNT} iskonto sonrası ₺${(form.list * (1 - MAX_DISCOUNT / 100)).toFixed(0)}`
-                        }
+                    if (!base || base <= 0) return null;
+                    const currentMargin = form.list > 0 ? ((form.list - base) / base * 100) : null;
+                    const isLow = currentMargin !== null && currentMargin < MIN_MARGIN;
+                    const isHigh = currentMargin !== null && currentMargin >= 30;
+                    return (
+                      <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {listManual && currentMargin !== null && (
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+                            background: isLow ? 'rgba(248,113,113,.15)' : isHigh ? 'rgba(34,197,94,.15)' : 'rgba(232,93,4,.15)',
+                            color: isLow ? '#f87171' : isHigh ? '#4ade80' : '#E85D04',
+                            border: `1px solid ${isLow ? 'rgba(248,113,113,.35)' : isHigh ? 'rgba(34,197,94,.35)' : 'rgba(232,93,4,.35)'}`,
+                          }}>
+                            {isLow ? '⚠ ' : isHigh ? '✓ ' : ''}Mevcut kâr: %{currentMargin.toFixed(0)}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', lineHeight: 1.4 }}>
+                          {listManual
+                            ? `Tavsiye: ₺${recommendedList(base).toLocaleString('tr-TR')} · %${MIN_MARGIN} kâr`
+                            : `%${MIN_MARGIN} kâr · %${MAX_DISCOUNT} iskonto sonrası ₺${(form.list * (1 - MAX_DISCOUNT / 100)).toFixed(0)}`
+                          }
+                        </span>
                       </div>
-                    ) : null;
+                    );
                   })()}
                 </div>
               </div>
