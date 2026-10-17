@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useRates } from '@/hooks/useRates';
+import { useAuth } from '@/hooks/useAuth';
 import * as XLSX from 'xlsx';
 import Pagination from '@/components/Pagination';
 
@@ -43,13 +44,18 @@ function toAsciiPrefix(str: string): string {
     .slice(0, 3);
 }
 
-function generateCode(prefix: string, products: Product[], catName: string): string {
+function generateCode(prefix: string, products: Product[]): string {
+  // Prefix'teki Türkçe karakterleri temizle
+  const cleanPrefix = toAsciiPrefix(prefix);
   const year = new Date().getFullYear().toString().slice(-2);
-  const existing = products.filter(p =>
-    p.catName === catName && p.code?.startsWith(`${prefix}-${year}-`)
-  );
-  const seq = (existing.length + 1).toString().padStart(3, '0');
-  return `${prefix}-${year}-${seq}`;
+  // Tüm ürünlerde global olarak benzersizliği kontrol et (kategori sınırı yok)
+  const existing = products
+    .map(p => p.code || '')
+    .filter(c => c.startsWith(`${cleanPrefix}-${year}-`))
+    .map(c => parseInt(c.split('-').pop() || '0'))
+    .filter(n => !isNaN(n));
+  const seq = (existing.length > 0 ? Math.max(...existing) + 1 : 1).toString().padStart(3, '0');
+  return `${cleanPrefix}-${year}-${seq}`;
 }
 
 function generateCodeFromName(name: string, products: Product[]): string {
@@ -216,6 +222,7 @@ function ProductsPageInner() {
   const photoRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const { rates } = useRates();
+  const { role } = useAuth();
   const usdRate = rates.USD || 1;
 
   // Ürünün TL maliyetini hesapla (costUsd varsa kur ile çevir)
@@ -269,7 +276,7 @@ function ProductsPageInner() {
 
   function autoCode(catName: string, productName = '') {
     const cat = categories.find(c => c.name === catName);
-    if (cat?.prefix) return generateCode(cat.prefix, products, catName);
+    if (cat?.prefix) return generateCode(cat.prefix, products);
     if (productName) return generateCodeFromName(productName, products);
     return '';
   }
@@ -423,7 +430,7 @@ function ProductsPageInner() {
       if (!code) {
         const cat = categories.find(c => c.name === catName);
         if (cat?.prefix) {
-          code = generateCode(cat.prefix, currentProducts, catName);
+          code = generateCode(cat.prefix, currentProducts);
         } else {
           code = generateCodeFromName(name, currentProducts);
         }
@@ -558,6 +565,76 @@ function ProductsPageInner() {
     if (!confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
     setProducts(prev => prev.filter(p => p.id !== id));
     await deleteDoc(doc(db, 'products', id));
+  }
+
+  async function fixDuplicateCodes() {
+    if (!confirm('Çakışan ve Türkçe karakterli stok kodları otomatik düzeltilecek. Devam?')) return;
+    const snap = await import('firebase/firestore').then(({ getDocs, collection: col, writeBatch: wb, doc: d }) =>
+      getDocs(col(db, 'products')).then(s => ({ snap: s, wb, d }))
+    );
+    const { writeBatch: wbFn, doc: docFn } = await import('firebase/firestore');
+    const all: Array<{ id: string; code: string; name: string }> = [];
+    snap.snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.code) all.push({ id: d.id, code: data.code, name: data.name || '' });
+    });
+
+    const allCodes = new Set(all.map(p => p.code));
+    const updates: Array<{ id: string; oldCode: string; newCode: string }> = [];
+
+    // Türkçe karakterleri temizle
+    for (const p of all) {
+      const clean = p.code
+        .replace(/Ç/gi, 'C').replace(/Ğ/gi, 'G').replace(/İ/gi, 'I')
+        .replace(/Ö/gi, 'O').replace(/Ş/gi, 'S').replace(/Ü/gi, 'U')
+        .replace(/ı/g, 'I')
+        .toUpperCase();
+      if (clean !== p.code) {
+        allCodes.delete(p.code);
+        // yeni kod çakışıyorsa sıra bul
+        let candidate = clean;
+        if (allCodes.has(candidate)) {
+          const parts = clean.split('-');
+          const prefix = parts[0]; const year = parts[1] || '26';
+          let seq = 1;
+          while (allCodes.has(`${prefix}-${year}-${String(seq).padStart(3, '0')}`)) seq++;
+          candidate = `${prefix}-${year}-${String(seq).padStart(3, '0')}`;
+        }
+        allCodes.add(candidate);
+        updates.push({ id: p.id, oldCode: p.code, newCode: candidate });
+        p.code = candidate;
+      }
+    }
+
+    // Çakışan kodları bul ve düzelt
+    const codeMap: Record<string, typeof all> = {};
+    for (const p of all) {
+      if (!codeMap[p.code]) codeMap[p.code] = [];
+      codeMap[p.code].push(p);
+    }
+    for (const [, arr] of Object.entries(codeMap)) {
+      if (arr.length <= 1) continue;
+      for (let i = 1; i < arr.length; i++) {
+        const p = arr[i];
+        const parts = p.code.split('-');
+        const prefix = parts[0]; const year = parts[1] || '26';
+        let seq = 1;
+        while (allCodes.has(`${prefix}-${year}-${String(seq).padStart(3, '0')}`)) seq++;
+        const newCode = `${prefix}-${year}-${String(seq).padStart(3, '0')}`;
+        allCodes.add(newCode);
+        updates.push({ id: p.id, oldCode: p.code, newCode });
+        p.code = newCode;
+      }
+    }
+
+    if (updates.length === 0) { showToast('Düzeltilecek kod yok.'); return; }
+
+    // Batch güncelle
+    const batch = wbFn(db);
+    for (const u of updates) batch.update(docFn(db, 'products', u.id), { code: u.newCode });
+    await batch.commit();
+    showToast(`${updates.length} stok kodu düzeltildi.`);
+    await load();
   }
 
   // Seçim fonksiyonları
@@ -719,6 +796,11 @@ function ProductsPageInner() {
             <IconUpload size={16} /> <span className="btn-label">{importing ? 'Aktarılıyor...' : 'İçeri Aktar'}</span>
           </button>
           <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportCSV} />
+          {role === 'admin' && (
+            <button className="btn btn-secondary" onClick={fixDuplicateCodes} title="Çakışan/Türkçe kodları düzelt" style={{ color: '#f87171', borderColor: 'rgba(248,113,113,.3)' }}>
+              <IconRefresh size={16} /> <span className="btn-label">Kodu Düzelt</span>
+            </button>
+          )}
           <button className="btn btn-primary" onClick={() => openAdd()}>
             <IconPlus size={16} /> <span className="btn-label">Yeni Ürün</span>
           </button>
