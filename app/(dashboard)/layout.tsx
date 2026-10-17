@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import MobTopbar from '@/components/MobTopbar';
 import BottomNav from '@/components/BottomNav';
 import DecimalFixer from '@/components/DecimalFixer';
+import UpdateBanner from '@/components/UpdateBanner';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
@@ -48,6 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </div>
       <BottomNav />
+      <UpdateBanner />
     </div>
   );
 }

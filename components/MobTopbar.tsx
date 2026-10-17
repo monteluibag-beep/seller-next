@@ -1,8 +1,8 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import { IconMenu2 } from '@tabler/icons-react';
+import { IconMenu2, IconSun, IconMoon } from '@tabler/icons-react';
 import { useRates } from '@/hooks/useRates';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Drawer from './Drawer';
 
 const pageTitles: Record<string, string> = {
@@ -20,8 +20,21 @@ export default function MobTopbar() {
   const pathname = usePathname();
   const { rates } = useRates();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const title = pageTitles[pathname] || 'Çalışkan Çanta';
   const isDashboard = pathname === '/';
+
+  useEffect(() => {
+    const saved = (localStorage.getItem('app-theme') as 'dark' | 'light') || 'dark';
+    setTheme(saved);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('app-theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  };
 
   function openPriceModal() {
     document.dispatchEvent(new CustomEvent('open-price-modal'));
@@ -51,6 +64,20 @@ export default function MobTopbar() {
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)' }}>₺{rates.EUR.toFixed(2)}</div>
             </div>
           </div>
+
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Aydınlık Mod' : 'Karanlık Mod'}
+            style={{
+              width: 34, height: 34, borderRadius: 8,
+              background: 'var(--alpha-7)', border: '1px solid var(--border)',
+              color: 'var(--text-2)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
+          </button>
 
           {isDashboard && (
             <button

@@ -779,7 +779,7 @@ function ProductsPageInner() {
                 className="form-input"
                 value={catFilter}
                 onChange={e => setCatFilter(e.target.value)}
-                style={{ height: 36, fontSize: 13, minWidth: 180 }}
+                style={{ height: 36, fontSize: 13, minWidth: 0, flex: '1 1 180px', maxWidth: 320 }}
               >
                 <option value="">Tüm Kategoriler ({products.length})</option>
                 {usedCatNames.map(cat => (
