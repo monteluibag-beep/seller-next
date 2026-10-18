@@ -315,10 +315,10 @@ export default function CatalogPage() {
       </div>
 
       <div className="page-content">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'start' }}>
 
           {/* Kategori seçimi */}
-          <div className="card">
+          <div className="card" style={{ flex: '1 1 300px', minWidth: 0 }}>
             <div className="card-header">
               <div className="card-title">Kategoriler</div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -326,7 +326,7 @@ export default function CatalogPage() {
                 <button className="btn btn-secondary btn-sm" onClick={clearAll}>Temizle</button>
               </div>
             </div>
-            <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+            <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
               {cats.map(cat => {
                 const count = productsByCat[cat]?.length || 0;
                 const selected = selectedCats.has(cat);
@@ -361,7 +361,7 @@ export default function CatalogPage() {
           </div>
 
           {/* Ayarlar & Özet */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: '1 1 280px', minWidth: 0 }}>
             <div className="card">
               <div className="card-header"><div className="card-title">Katalog Seçenekleri</div></div>
               <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
