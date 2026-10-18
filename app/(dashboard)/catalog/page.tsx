@@ -70,27 +70,27 @@ function generateCatalogHtml(
 
     return `
       <!-- KATEGORİ SAYFASI: ${esc(cat)} -->
-      <div style="page-break-before:always;height:297mm;width:210mm;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="page-break-before:always;height:297mm;width:210mm;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;position:relative;overflow:hidden;">
 
         <!-- Sayfa başlığı -->
-        <div style="padding:36px 48px 18px;border-bottom:3px solid #E85D04;flex-shrink:0;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div style="font-size:11px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
+        <div style="padding:24px 36px 14px;border-bottom:3px solid #E85D04;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:10px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
             ${logoHtml}
           </div>
-          <div style="font-size:26px;font-weight:900;color:#111;letter-spacing:-0.5px;line-height:1.1;">${esc(cat)}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:4px;">${prods.length} ürün</div>
+          <div style="font-size:22px;font-weight:900;color:#111;letter-spacing:-0.5px;line-height:1.1;">${esc(cat)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px;">${prods.length} ürün</div>
         </div>
 
-        <!-- Ürün grid — flex:1 ile kalan alanı doldurur -->
-        <div style="flex:1;padding:24px 48px;overflow:hidden;">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+        <!-- Ürün grid — footer yüksekliği (40px) + header yüksekliği (~110px) kadar boşluk bırak -->
+        <div style="position:absolute;top:110px;left:0;right:0;bottom:40px;padding:16px 36px;overflow:hidden;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
             ${productCards}
           </div>
         </div>
 
-        <!-- Alt bilgi — her zaman sayfanın en altında -->
-        <div style="flex-shrink:0;padding:12px 48px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+        <!-- Alt bilgi — her zaman sayfanın en altına yapışık -->
+        <div style="position:absolute;bottom:0;left:0;right:0;height:40px;padding:0 36px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff;">
           <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? ' · ' + esc(firm.phone) : ''}</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(cat)}</div>
@@ -148,8 +148,8 @@ function generateCatalogHtml(
   <!-- İçerik üzerinde hafif beyaz gradient (ikonları arkada soldurur) -->
   <div style="position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.80) 20%, rgba(255,255,255,.50) 55%, rgba(255,255,255,.15) 100%);"></div>
 
-  <!-- İÇERİK — tam ortada -->
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 60px;position:relative;z-index:3;text-align:center;">
+  <!-- İÇERİK — tam ortada, footer (40px) için boşluk bırak -->
+  <div style="position:absolute;top:0;left:0;right:0;bottom:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 60px;z-index:3;text-align:center;overflow:hidden;">
 
     <!-- Logo -->
     ${firm.logoDataUrl
@@ -192,8 +192,8 @@ function generateCatalogHtml(
     </div>
   </div>
 
-  <!-- Alt: tarih -->
-  <div style="padding:18px;display:flex;align-items:center;justify-content:center;border-top:1px solid rgba(0,0,0,.06);position:relative;z-index:3;">
+  <!-- Alt: tarih — sayfanın en altına yapışık -->
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:14px;display:flex;align-items:center;justify-content:center;border-top:1px solid rgba(0,0,0,.06);z-index:3;background:#fff;">
     <span style="font-size:11px;color:#aaa;font-weight:500;">${new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })}</span>
   </div>
 </div>
