@@ -83,8 +83,8 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
 
   const filtered = search.length >= 1
     ? products.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.code.toLowerCase().includes(search.toLowerCase())
+        (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.code || '').toLowerCase().includes(search.toLowerCase())
       ).slice(0, 8)
     : [];
 
@@ -239,8 +239,15 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
           </div>
         </div>
 
+        {/* Liste fiyatı sıfır uyarısı */}
+        {showResult && selected && !selected.list && (
+          <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#ef4444' }}>
+            Bu ürünün liste fiyatı girilmemiş. Önce ürünler sayfasından fiyat ekleyin.
+          </div>
+        )}
+
         {/* Sonuç */}
-        {showResult && selected && (
+        {showResult && selected && selected.list > 0 && (
           <>
             {/* Ana fiyat kartı */}
             <div style={{
