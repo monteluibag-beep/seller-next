@@ -47,59 +47,74 @@ function generateCatalogHtml(
 
   const totalPages = 1 + selectedCats.length; // kapak + kategori sayfaları
 
-  const categoryPages = selectedCats.map((cat, catIdx) => {
-    const pageNum = catIdx + 1; // kapak numarasız, içerik 1'den başlar
+  const PRODUCTS_PER_PAGE = 9; // 3 sütun × 3 satır
+
+  // Her kategori için sayfa(lar) üret — 9'dan fazla ürün varsa birden fazla sayfa
+  let globalPageNum = 0;
+  const categoryPages = selectedCats.flatMap((cat) => {
     const prods = productsByCat[cat] || [];
-    const productCards = prods.map(p => `
-      <div style="break-inside:avoid;background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
-        <div style="background:#fff;height:180px;display:flex;align-items:center;justify-content:center;padding:12px;">
-          ${p.photo
-            ? `<img src="${esc(p.photo)}" alt="${esc(p.name)}" style="max-height:156px;max-width:100%;object-fit:contain;">`
-            : `<div style="width:80px;height:80px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-               </div>`
-          }
-        </div>
-        <div style="padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:6px;">
-          <div style="font-size:13px;font-weight:700;color:#111;line-height:1.3;">${esc(p.name)}</div>
-          ${showCode && p.code ? `<div style="font-size:11px;color:#6b7280;font-family:monospace;background:#f3f4f6;padding:2px 8px;border-radius:4px;display:inline-block;width:fit-content;">${esc(p.code)}</div>` : ''}
-          ${showPrice && p.list ? `<div style="font-size:13px;font-weight:800;color:#E85D04;margin-top:auto;">${fmtPrice(p.list)}</div>` : ''}
-        </div>
-      </div>
-    `).join('');
+    const chunks: Product[][] = [];
+    for (let i = 0; i < Math.max(prods.length, 1); i += PRODUCTS_PER_PAGE) {
+      chunks.push(prods.slice(i, i + PRODUCTS_PER_PAGE));
+    }
 
-    return `
-      <!-- KATEGORİ SAYFASI: ${esc(cat)} -->
-      <div style="page-break-before:always;height:297mm;width:210mm;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;position:relative;overflow:hidden;">
+    return chunks.map((chunk, chunkIdx) => {
+      globalPageNum++;
+      const pageNum = globalPageNum;
+      const isFirstChunk = chunkIdx === 0;
+      const catLabel = chunks.length > 1 ? `${esc(cat)} (${chunkIdx + 1}/${chunks.length})` : esc(cat);
 
-        <!-- Sayfa başlığı -->
-        <div style="padding:24px 36px 14px;border-bottom:3px solid #E85D04;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div style="font-size:10px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
-            ${logoHtml}
+      const productCards = chunk.map(p => `
+        <div style="background:#fff;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#fff;height:160px;display:flex;align-items:center;justify-content:center;padding:10px;">
+            ${p.photo
+              ? `<img src="${esc(p.photo)}" alt="${esc(p.name)}" style="max-height:140px;max-width:100%;object-fit:contain;">`
+              : `<div style="width:64px;height:64px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                 </div>`
+            }
           </div>
-          <div style="font-size:22px;font-weight:900;color:#111;letter-spacing:-0.5px;line-height:1.1;">${esc(cat)}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:3px;">${prods.length} ürün</div>
-        </div>
-
-        <!-- Ürün grid — footer yüksekliği (40px) + header yüksekliği (~110px) kadar boşluk bırak -->
-        <div style="position:absolute;top:110px;left:0;right:0;bottom:40px;padding:16px 36px;overflow:hidden;">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
-            ${productCards}
+          <div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="font-size:12px;font-weight:700;color:#111;line-height:1.3;">${esc(p.name)}</div>
+            ${showCode && p.code ? `<div style="font-size:10px;color:#6b7280;font-family:monospace;background:#f3f4f6;padding:2px 6px;border-radius:4px;display:inline-block;width:fit-content;">${esc(p.code)}</div>` : ''}
+            ${showPrice && p.list ? `<div style="font-size:12px;font-weight:800;color:#E85D04;margin-top:auto;">${fmtPrice(p.list)}</div>` : ''}
           </div>
         </div>
+      `).join('');
 
-        <!-- Alt bilgi — her zaman sayfanın en altına yapışık -->
-        <div style="position:absolute;bottom:0;left:0;right:0;height:40px;padding:0 36px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff;">
-          <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? ' · ' + esc(firm.phone) : ''}</div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(cat)}</div>
-            <div style="width:1px;height:12px;background:#e5e7eb;"></div>
-            <div style="font-size:11px;font-weight:700;color:#E85D04;">${pageNum}</div>
+      return `
+        <!-- KATEGORİ SAYFASI: ${esc(cat)} sayfa ${chunkIdx + 1} -->
+        <div style="page-break-before:always;height:297mm;width:210mm;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;position:relative;overflow:hidden;">
+
+          <!-- Sayfa başlığı -->
+          <div style="padding:20px 36px 12px;border-bottom:3px solid #E85D04;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div style="font-size:10px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
+              ${isFirstChunk ? logoHtml : `<div style="font-size:11px;color:#9ca3af;">${catLabel}</div>`}
+            </div>
+            ${isFirstChunk ? `<div style="font-size:20px;font-weight:900;color:#111;letter-spacing:-0.5px;line-height:1.1;">${esc(cat)}</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:2px;">${prods.length} ürün</div>` : ''}
+          </div>
+
+          <!-- Ürün grid -->
+          <div style="position:absolute;top:${isFirstChunk ? 96 : 56}px;left:0;right:0;bottom:40px;padding:14px 36px;overflow:hidden;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+              ${productCards}
+            </div>
+          </div>
+
+          <!-- Alt bilgi -->
+          <div style="position:absolute;bottom:0;left:0;right:0;height:40px;padding:0 36px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff;">
+            <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? ' · ' + esc(firm.phone) : ''}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(cat)}</div>
+              <div style="width:1px;height:12px;background:#e5e7eb;"></div>
+              <div style="font-size:11px;font-weight:700;color:#E85D04;">${pageNum}</div>
+            </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
+    });
   }).join('');
 
   return `<!DOCTYPE html>
