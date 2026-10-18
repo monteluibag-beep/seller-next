@@ -70,7 +70,7 @@ function generateCatalogHtml(
 
     return `
       <!-- KATEGORİ SAYFASI: ${esc(cat)} -->
-      <div style="page-break-before:always;height:297mm;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
+      <div style="page-break-before:always;height:297mm;width:210mm;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;overflow:hidden;">
 
         <!-- Sayfa başlığı -->
         <div style="padding:36px 48px 18px;border-bottom:3px solid #E85D04;flex-shrink:0;">
@@ -109,9 +109,10 @@ function generateCatalogHtml(
 <title>Katalog — ${esc(firm.name)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #fff; color: #111; }
+  html, body { background: #fff; color: #111; width: 210mm; }
+  @page { size: A4 portrait; margin: 0; }
   @media print {
-    @page { size: A4; margin: 0; }
+    html, body { width: 210mm; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
@@ -119,7 +120,7 @@ function generateCatalogHtml(
 <body>
 
 <!-- KAPAK SAYFASI -->
-<div style="height:100vh;background:#fff;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
+<div style="height:297mm;width:210mm;background:#fff;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
 
   <!-- ARKA PLAN: tam ekran çanta ikonu ızgarası -->
   <div id="bg-icons" style="position:absolute;inset:0;z-index:0;opacity:.18;display:grid;grid-template-columns:repeat(12,1fr);gap:0;align-items:center;justify-items:center;padding:8px;">
