@@ -84,10 +84,10 @@ function generateCatalogHtml(
 
       return `
         <!-- KATEGORİ SAYFASI: ${esc(cat)} sayfa ${chunkIdx + 1} -->
-        <div style="page-break-before:always;height:1123px;width:794px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;position:relative;overflow:hidden;">
+        <div class="page" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 
           <!-- Sayfa başlığı -->
-          <div style="padding:20px 36px 12px;border-bottom:3px solid #E85D04;">
+          <div style="flex-shrink:0;padding:20px 36px 12px;border-bottom:3px solid #E85D04;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
               <div style="font-size:10px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
               ${isFirstChunk ? logoHtml : `<div style="font-size:11px;color:#9ca3af;">${catLabel}</div>`}
@@ -96,15 +96,15 @@ function generateCatalogHtml(
             <div style="font-size:11px;color:#6b7280;margin-top:2px;">${prods.length} ürün</div>` : ''}
           </div>
 
-          <!-- Ürün grid -->
-          <div style="position:absolute;top:${isFirstChunk ? 96 : 56}px;left:0;right:0;bottom:40px;padding:14px 36px;overflow:hidden;">
+          <!-- Ürün grid — flex:1 ile kalan alanı doldurur, overflow:hidden ile taşmaz -->
+          <div style="flex:1;padding:14px 36px;overflow:hidden;">
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
               ${productCards}
             </div>
           </div>
 
-          <!-- Alt bilgi -->
-          <div style="position:absolute;bottom:0;left:0;right:0;height:40px;padding:0 36px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff;">
+          <!-- Alt bilgi — flex-shrink:0 ile sayfanın altına yapışık -->
+          <div style="flex-shrink:0;height:40px;padding:0 36px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff;">
             <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? ' · ' + esc(firm.phone) : ''}</div>
             <div style="display:flex;align-items:center;gap:8px;">
               <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(cat)}</div>
@@ -125,18 +125,27 @@ function generateCatalogHtml(
 <title>Katalog — ${esc(firm.name)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: #fff; color: #111; width: 794px; }
+  html, body { background: #fff; color: #111; }
   @page { size: A4 portrait; margin: 0; }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   @media print {
-    html, body { width: 794px; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { page-break-after: always; break-after: page; }
   }
 </style>
 </head>
 <body>
 
 <!-- KAPAK SAYFASI -->
-<div style="height:1123px;width:794px;background:#fff;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;">
+<div class="page" style="background:#fff;position:relative;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 
   <!-- ARKA PLAN: tam ekran çanta ikonu ızgarası -->
   <div id="bg-icons" style="position:absolute;inset:0;z-index:0;opacity:.18;display:grid;grid-template-columns:repeat(12,1fr);gap:0;align-items:center;justify-items:center;padding:8px;">
@@ -164,8 +173,8 @@ function generateCatalogHtml(
   <!-- İçerik üzerinde hafif beyaz gradient (ikonları arkada soldurur) -->
   <div style="position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.80) 20%, rgba(255,255,255,.50) 55%, rgba(255,255,255,.15) 100%);"></div>
 
-  <!-- İÇERİK — tam ortada, footer (40px) için boşluk bırak -->
-  <div style="position:absolute;top:0;left:0;right:0;bottom:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 60px;z-index:3;text-align:center;overflow:hidden;">
+  <!-- İÇERİK — flex:1 ile kalan alanı doldurur -->
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 60px;position:relative;z-index:3;text-align:center;overflow:hidden;">
 
     <!-- Logo -->
     ${firm.logoDataUrl
@@ -208,8 +217,8 @@ function generateCatalogHtml(
     </div>
   </div>
 
-  <!-- Alt: tarih — sayfanın en altına yapışık -->
-  <div style="position:absolute;bottom:0;left:0;right:0;padding:14px;display:flex;align-items:center;justify-content:center;border-top:1px solid rgba(0,0,0,.06);z-index:3;background:#fff;">
+  <!-- Alt: tarih — flex-shrink:0 ile sayfanın altına yapışık -->
+  <div style="flex-shrink:0;padding:14px;display:flex;align-items:center;justify-content:center;border-top:1px solid rgba(0,0,0,.06);z-index:3;background:#fff;">
     <span style="font-size:11px;color:#aaa;font-weight:500;">${new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })}</span>
   </div>
 </div>
