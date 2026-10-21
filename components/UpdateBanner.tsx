@@ -39,7 +39,7 @@ export default function UpdateBanner() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
+      position: 'fixed', bottom: 'var(--bottom-nav-h, 0px)', left: 0, right: 0, zIndex: 9999,
       background: '#1a1a1a', borderTop: '2px solid #E85D04',
       padding: '12px 20px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
