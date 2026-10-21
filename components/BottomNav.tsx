@@ -33,7 +33,7 @@ export default function BottomNav() {
             <Link key={item.href} href={item.href} style={{
               flex: 1, display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center', gap: 3,
-              color: active ? 'var(--or)' : 'rgba(255,255,255,.4)',
+              color: active ? 'var(--or)' : 'var(--text-3)',
               textDecoration: 'none', fontSize: 9, fontWeight: 600,
             }}>
               <Icon size={22} />
@@ -44,7 +44,7 @@ export default function BottomNav() {
         <button onClick={() => setDrawerOpen(true)} style={{
           flex: 1, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: 3,
-          color: 'rgba(255,255,255,.4)', background: 'none', border: 'none',
+          color: 'var(--text-3)', background: 'none', border: 'none',
           cursor: 'pointer', fontSize: 9, fontWeight: 600,
         }}>
           <IconDots size={22} />
