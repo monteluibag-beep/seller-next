@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Product } from '@/types';
-import { IconBook2, IconDownload, IconCheck } from '@tabler/icons-react';
+import { IconBook2, IconDownload, IconCheck, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import type { FirmInfo } from '@/lib/offerPdf';
 import { useRates } from '@/hooks/useRates';
 
@@ -204,6 +204,8 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings>({});
   const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [showPrice, setShowPrice] = useState(true);
   const [showCode, setShowCode] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -228,7 +230,41 @@ export default function CatalogPage() {
   });
 
   function toggleCat(cat: string) {
+    const catProds = productsByCat[cat] || [];
+    const allSelected = catProds.every(p => selectedProducts.has(p.id!));
+    setSelectedProducts(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        catProds.forEach(p => next.delete(p.id!));
+      } else {
+        catProds.forEach(p => next.add(p.id!));
+      }
+      return next;
+    });
     setSelectedCats(prev => {
+      const next = new Set(prev);
+      allSelected ? next.delete(cat) : next.add(cat);
+      return next;
+    });
+  }
+
+  function toggleProduct(cat: string, productId: string) {
+    const catProds = productsByCat[cat] || [];
+    setSelectedProducts(prev => {
+      const next = new Set(prev);
+      next.has(productId) ? next.delete(productId) : next.add(productId);
+      const anySelected = catProds.some(p => next.has(p.id!));
+      setSelectedCats(cats2 => {
+        const nextCats = new Set(cats2);
+        anySelected ? nextCats.add(cat) : nextCats.delete(cat);
+        return nextCats;
+      });
+      return next;
+    });
+  }
+
+  function toggleExpand(cat: string) {
+    setExpandedCats(prev => {
       const next = new Set(prev);
       next.has(cat) ? next.delete(cat) : next.add(cat);
       return next;
@@ -237,10 +273,12 @@ export default function CatalogPage() {
 
   function selectAll() {
     setSelectedCats(new Set(cats));
+    setSelectedProducts(new Set(products.map(p => p.id!)));
   }
 
   function clearAll() {
     setSelectedCats(new Set());
+    setSelectedProducts(new Set());
   }
 
   async function generateCatalog() {
@@ -273,7 +311,14 @@ export default function CatalogPage() {
       };
 
       const orderedCats = cats.filter(c => selectedCats.has(c));
-      const html = generateCatalogHtml(orderedCats, productsByCat, firm, showPrice, showCode, currency, qty, rates);
+      // Seçili ürünleri filtrele — kategori tamamsa tümü, kısmensa sadece seçililer
+      const filteredByCat: Record<string, Product[]> = {};
+      orderedCats.forEach(c => {
+        const catProds = productsByCat[c] || [];
+        const allSelected = catProds.every(p => selectedProducts.has(p.id!));
+        filteredByCat[c] = allSelected ? catProds : catProds.filter(p => selectedProducts.has(p.id!));
+      });
+      const html = generateCatalogHtml(orderedCats, filteredByCat, firm, showPrice, showCode, currency, qty, rates);
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const w = window.open(url, '_blank', 'width=1000,height=800');
@@ -291,7 +336,11 @@ export default function CatalogPage() {
   );
 
   const orderedSelected = cats.filter(c => selectedCats.has(c));
-  const totalProducts = orderedSelected.reduce((s, c) => s + (productsByCat[c]?.length || 0), 0);
+  const totalProducts = orderedSelected.reduce((s, c) => {
+    const catProds = productsByCat[c] || [];
+    const selCount = catProds.filter(p => selectedProducts.has(p.id!)).length;
+    return s + (selCount || catProds.length);
+  }, 0);
 
   return (
     <>
@@ -322,35 +371,81 @@ export default function CatalogPage() {
                 <button className="btn btn-secondary btn-sm" onClick={clearAll}>Temizle</button>
               </div>
             </div>
-            <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
+            <div style={{ padding: '8px 0' }}>
               {cats.map(cat => {
-                const count = productsByCat[cat]?.length || 0;
-                const selected = selectedCats.has(cat);
+                const catProds = productsByCat[cat] || [];
+                const selCount = catProds.filter(p => selectedProducts.has(p.id!)).length;
+                const allSel = selCount === catProds.length && catProds.length > 0;
+                const partSel = selCount > 0 && selCount < catProds.length;
+                const expanded = expandedCats.has(cat);
                 return (
-                  <button
-                    key={cat}
-                    onClick={() => toggleCat(cat)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                      border: selected ? '2px solid var(--or)' : '1px solid var(--border)',
-                      background: selected ? 'var(--or-tint)' : 'var(--surface-2)',
-                      transition: 'all .15s',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{
-                        width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                        border: selected ? 'none' : '1.5px solid var(--border-2)',
-                        background: selected ? 'var(--or)' : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        {selected && <IconCheck size={13} color="#fff" />}
+                  <div key={cat}>
+                    {/* Kategori satırı */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '9px 16px', cursor: 'pointer',
+                      background: allSel ? 'var(--or-tint)' : partSel ? 'var(--surface-2)' : 'transparent',
+                      borderLeft: allSel ? '3px solid var(--or)' : partSel ? '3px solid var(--or)' : '3px solid transparent',
+                    }}>
+                      {/* Checkbox */}
+                      <div
+                        onClick={() => toggleCat(cat)}
+                        style={{
+                          width: 18, height: 18, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
+                          border: allSel ? 'none' : partSel ? '2px solid var(--or)' : '1.5px solid var(--border-2)',
+                          background: allSel ? 'var(--or)' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        {allSel && <IconCheck size={11} color="#fff" />}
+                        {partSel && <div style={{ width: 8, height: 2, background: 'var(--or)', borderRadius: 1 }} />}
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{cat}</span>
+                      {/* İsim */}
+                      <span
+                        onClick={() => toggleCat(cat)}
+                        style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)', cursor: 'pointer' }}
+                      >{cat}</span>
+                      {/* Sayaç */}
+                      <span style={{ fontSize: 11, color: selCount > 0 ? 'var(--or)' : 'var(--text-3)', fontWeight: 600, minWidth: 28, textAlign: 'right' }}>
+                        {selCount > 0 ? `${selCount}/${catProds.length}` : catProds.length}
+                      </span>
+                      {/* Expand */}
+                      <div onClick={() => toggleExpand(cat)} style={{ color: 'var(--text-3)', cursor: 'pointer', padding: '0 2px' }}>
+                        {expanded ? <IconChevronDown size={15} /> : <IconChevronRight size={15} />}
+                      </div>
                     </div>
-                    <span style={{ fontSize: 11, color: selected ? 'var(--or)' : 'var(--text-3)', fontWeight: 600 }}>{count}</span>
-                  </button>
+
+                    {/* Ürün listesi */}
+                    {expanded && (
+                      <div style={{ paddingBottom: 4 }}>
+                        {catProds.map(p => {
+                          const pSel = selectedProducts.has(p.id!);
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => toggleProduct(cat, p.id!)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '7px 16px 7px 42px', cursor: 'pointer',
+                                background: pSel ? 'var(--or-tint)' : 'transparent',
+                              }}
+                            >
+                              <div style={{
+                                width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                                border: pSel ? 'none' : '1.5px solid var(--border-2)',
+                                background: pSel ? 'var(--or)' : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                {pSel && <IconCheck size={10} color="#fff" />}
+                              </div>
+                              <span style={{ fontSize: 12, color: 'var(--text-1)', flex: 1, lineHeight: 1.3 }}>{p.name}</span>
+                              {p.code && <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'monospace' }}>{p.code}</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -426,12 +521,8 @@ export default function CatalogPage() {
                   <span style={{ fontWeight: 700 }}>{selectedCats.size}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: 'var(--text-3)' }}>Toplam ürün</span>
+                  <span style={{ color: 'var(--text-3)' }}>Seçili ürün</span>
                   <span style={{ fontWeight: 700 }}>{totalProducts}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: 'var(--text-3)' }}>Tahmini sayfa</span>
-                  <span style={{ fontWeight: 700 }}>{1 + selectedCats.size} (kapak + {selectedCats.size})</span>
                 </div>
                 {selectedCats.size > 0 && (
                   <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
