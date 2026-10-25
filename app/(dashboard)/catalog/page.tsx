@@ -84,10 +84,10 @@ function generateCatalogHtml(
 
       return `
         <!-- KATEGORİ SAYFASI: ${esc(cat)} sayfa ${chunkIdx + 1} -->
-        <div class="page" style="display:flex;flex-direction:column;min-height:277mm;">
+        <div class="page" style="position:relative;min-height:277mm;padding-bottom:40px;">
 
           <!-- Sayfa başlığı -->
-          <div style="flex-shrink:0;padding:20px 36px 12px;border-bottom:3px solid #E85D04;">
+          <div style="padding:20px 36px 12px;border-bottom:3px solid #E85D04;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
               <div style="font-size:10px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
               ${isFirstChunk ? logoHtml : `<div style="font-size:11px;color:#9ca3af;">${catLabel}</div>`}
@@ -96,15 +96,15 @@ function generateCatalogHtml(
             <div style="font-size:11px;color:#6b7280;margin-top:2px;">${prods.length} ürün</div>` : ''}
           </div>
 
-          <!-- Ürün grid — flex:1 ile kalan alanı doldurur -->
-          <div style="flex:1;padding:14px 36px;">
+          <!-- Ürün grid -->
+          <div style="padding:14px 36px;">
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
               ${productCards}
             </div>
           </div>
 
-          <!-- Alt bilgi — her zaman sayfanın en altında -->
-          <div style="flex-shrink:0;padding:8px 36px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+          <!-- Alt bilgi — position:absolute ile sayfanın dibine sabitlendi -->
+          <div style="position:absolute;bottom:0;left:0;right:0;height:40px;padding:0 36px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff;">
             <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? ' · ' + esc(firm.phone) : ''}</div>
             <div style="display:flex;align-items:center;gap:8px;">
               <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(cat)}</div>
