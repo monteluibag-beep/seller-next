@@ -171,7 +171,7 @@ function generateCatalogHtml(
   <!-- Radyal gradient — arka planı soldurur, içerik okunabilir kalır -->
   <div style="position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.88) 20%, rgba(255,255,255,.60) 55%, rgba(255,255,255,.20) 100%);"></div>
 
-  <div style="position:relative;z-index:2;padding:80px 60px 40px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+  <div style="position:relative;z-index:2;min-height:257mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 60px;">
 
     ${firm.logoDataUrl
       ? `<div style="margin-bottom:32px;"><img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:56px;object-fit:contain;"></div>`
