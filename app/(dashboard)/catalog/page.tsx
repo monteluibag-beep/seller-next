@@ -149,7 +149,7 @@ function generateCatalogHtml(
 <body>
 
 <!-- KAPAK SAYFASI -->
-<div class="page" style="position:relative;overflow:hidden;">
+<div class="page" style="position:relative;">
 
   <!-- Arka plan çanta ikonları ızgarası -->
   <div style="position:absolute;inset:0;z-index:0;opacity:.22;display:grid;grid-template-columns:repeat(10,1fr);align-content:start;gap:0;">
