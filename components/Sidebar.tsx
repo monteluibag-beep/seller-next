@@ -24,9 +24,9 @@ const ALL_NAV = [
   { href: '/catalog', label: 'Katalog', icon: IconBook2, group: 'Yönetim', roles: ['admin', 'sales', 'mudur'] },
   { href: '/fason', label: 'Fason Takip', icon: IconClipboardList, group: 'Yönetim', roles: ['admin', 'mudur', 'atolye', 'sales'] },
   { href: '/atolye', label: 'Atölyeler', icon: IconBuildingFactory2, group: 'Yönetim', roles: ['admin', 'mudur'] },
-  { href: '/categories', label: 'Kategoriler', icon: IconTag, group: 'Sistem', roles: ['admin'] },
+  { href: '/categories', label: 'Kategoriler', icon: IconTag, group: 'Sistem', roles: ['admin', 'mudur'] },
   { href: '/users', label: 'Kullanıcılar', icon: IconUsers, group: 'Sistem', roles: ['admin'] },
-  { href: '/settings', label: 'Ayarlar', icon: IconSettings, group: 'Sistem', roles: ['admin'] },
+  { href: '/settings', label: 'Ayarlar', icon: IconSettings, group: 'Sistem', roles: ['admin', 'mudur'] },
 ];
 
 export default function Sidebar() {
