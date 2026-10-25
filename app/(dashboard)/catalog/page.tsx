@@ -152,17 +152,17 @@ function generateCatalogHtml(
 <div class="page" style="position:relative;overflow:hidden;">
 
   <!-- Arka plan çanta ikonları ızgarası -->
-  <div style="position:absolute;inset:0;z-index:0;opacity:.12;display:grid;grid-template-columns:repeat(10,1fr);align-content:start;gap:0;">
+  <div style="position:absolute;inset:0;z-index:0;opacity:.22;display:grid;grid-template-columns:repeat(10,1fr);align-content:start;gap:0;">
     ${(() => {
       const icons = [
-        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`,
-        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M17 8H7L4.5 18a2 2 0 0 0 2 2.5h11a2 2 0 0 0 2-2.5L17 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>`,
-        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V5a5 5 0 0 0-10 0v1H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/><path d="M12 2v4"/><path d="M8 14h8"/></svg>`,
-        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>`,
-        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.2"><rect x="5" y="2" width="14" height="17" rx="2"/><path d="M8 2v2M16 2v2"/><line x1="9" y1="21" x2="9.01" y2="21"/><line x1="15" y1="21" x2="15.01" y2="21"/><path d="M5 8h14"/></svg>`,
+        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.4"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`,
+        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.4"><path d="M17 8H7L4.5 18a2 2 0 0 0 2 2.5h11a2 2 0 0 0 2-2.5L17 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>`,
+        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.4"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V5a5 5 0 0 0-10 0v1H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/><path d="M12 2v4"/><path d="M8 14h8"/></svg>`,
+        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.4"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>`,
+        `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="1.4"><rect x="5" y="2" width="14" height="17" rx="2"/><path d="M8 2v2M16 2v2"/><line x1="9" y1="21" x2="9.01" y2="21"/><line x1="15" y1="21" x2="15.01" y2="21"/><path d="M5 8h14"/></svg>`,
       ];
       let html = '';
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 150; i++) {
         html += `<div style="display:flex;align-items:center;justify-content:center;width:79px;height:79px;">${icons[i % icons.length]}</div>`;
       }
       return html;
