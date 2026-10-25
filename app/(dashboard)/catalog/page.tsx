@@ -417,7 +417,7 @@ export default function CatalogPage() {
 
                     {/* Ürün listesi */}
                     {expanded && (
-                      <div style={{ paddingBottom: 4 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, padding: '8px 16px 12px' }}>
                         {catProds.map(p => {
                           const pSel = selectedProducts.has(p.id!);
                           return (
@@ -425,21 +425,39 @@ export default function CatalogPage() {
                               key={p.id}
                               onClick={() => toggleProduct(cat, p.id!)}
                               style={{
-                                display: 'flex', alignItems: 'center', gap: 10,
-                                padding: '7px 16px 7px 42px', cursor: 'pointer',
-                                background: pSel ? 'var(--or-tint)' : 'transparent',
+                                display: 'flex', flexDirection: 'column', cursor: 'pointer',
+                                borderRadius: 10, overflow: 'hidden',
+                                border: pSel ? '2px solid var(--or)' : '1.5px solid var(--border)',
+                                background: pSel ? 'var(--or-tint)' : 'var(--surface-2)',
+                                transition: 'border-color .12s, background .12s',
+                                position: 'relative',
                               }}
                             >
+                              {/* Checkbox köşe */}
                               <div style={{
-                                width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                                position: 'absolute', top: 6, right: 6,
+                                width: 18, height: 18, borderRadius: 5, zIndex: 1,
                                 border: pSel ? 'none' : '1.5px solid var(--border-2)',
-                                background: pSel ? 'var(--or)' : 'transparent',
+                                background: pSel ? 'var(--or)' : 'rgba(var(--surface-rgb,255,255,255),.85)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: '0 1px 3px rgba(0,0,0,.15)',
                               }}>
-                                {pSel && <IconCheck size={10} color="#fff" />}
+                                {pSel && <IconCheck size={11} color="#fff" />}
                               </div>
-                              <span style={{ fontSize: 12, color: 'var(--text-1)', flex: 1, lineHeight: 1.3 }}>{p.name}</span>
-                              {p.code && <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'monospace' }}>{p.code}</span>}
+                              {/* Resim */}
+                              <div style={{ height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', padding: 6 }}>
+                                {p.photo
+                                  ? <img src={p.photo} alt={p.name} style={{ maxHeight: 78, maxWidth: '100%', objectFit: 'contain', borderRadius: 4 }} />
+                                  : <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                                    </div>
+                                }
+                              </div>
+                              {/* İsim */}
+                              <div style={{ padding: '6px 8px 8px', borderTop: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.name}</div>
+                                {p.code && <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'monospace', marginTop: 2 }}>{p.code}</div>}
+                              </div>
                             </div>
                           );
                         })}
