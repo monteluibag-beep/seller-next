@@ -84,7 +84,7 @@ function generateCatalogHtml(
 
       return `
         <!-- KATEGORİ SAYFASI: ${esc(cat)} sayfa ${chunkIdx + 1} -->
-        <div class="page" style="position:relative;height:277mm;overflow:hidden;">
+        <div class="page cat-page">
 
           <!-- Sayfa başlığı -->
           <div style="padding:20px 36px 12px;border-bottom:3px solid #E85D04;">
@@ -140,9 +140,15 @@ function generateCatalogHtml(
     display: flex;
     flex-direction: column;
   }
+  .cat-page {
+    position: relative;
+    height: 277mm;
+    overflow: hidden;
+  }
   @media print {
     html, body { width: 794px; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cat-page { height: 100vh; }
   }
 </style>
 </head>
