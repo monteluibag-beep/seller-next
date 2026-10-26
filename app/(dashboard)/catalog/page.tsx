@@ -66,7 +66,7 @@ function generateCatalogHtml(
 
       const productCards = chunk.map(p => `
         <div style="background:#fff;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#fff;height:160px;display:flex;align-items:center;justify-content:center;padding:10px;">
+          <div style="background:#fff;height:140px;display:flex;align-items:center;justify-content:center;padding:8px;">
             ${p.photo
               ? `<img src="${esc(p.photo)}" alt="${esc(p.name)}" style="max-height:140px;max-width:100%;object-fit:contain;">`
               : `<div style="width:64px;height:64px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
@@ -84,7 +84,7 @@ function generateCatalogHtml(
 
       return `
         <!-- KATEGORİ SAYFASI: ${esc(cat)} sayfa ${chunkIdx + 1} -->
-        <div class="page" style="position:relative;min-height:277mm;padding-bottom:40px;">
+        <div class="page" style="position:relative;height:277mm;overflow:hidden;">
 
           <!-- Sayfa başlığı -->
           <div style="padding:20px 36px 12px;border-bottom:3px solid #E85D04;">
@@ -97,8 +97,8 @@ function generateCatalogHtml(
           </div>
 
           <!-- Ürün grid -->
-          <div style="padding:14px 36px;">
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          <div style="padding:12px 36px;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
               ${productCards}
             </div>
           </div>
