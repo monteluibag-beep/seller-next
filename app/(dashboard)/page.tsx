@@ -99,7 +99,7 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
 
   const qtyNum = Math.max(1, parseInt(qty.replace(',', '.')) || 1);
   const discRate = selected ? getDiscountRate(qtyNum, tiers) : 0;
-  const unitPrice = selected ? selected.list * (1 - discRate / 100) : 0;
+  const unitPrice = selected ? Number(selected.list) * (1 - discRate / 100) : 0;
   const totalPrice = unitPrice * qtyNum;
 
   // Özel fiyat: costUsd * 1.25 (admin için)
@@ -242,14 +242,14 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
         </div>
 
         {/* Liste fiyatı sıfır uyarısı */}
-        {showResult && selected && !selected.list && (
+        {showResult && selected && !(Number(selected.list) > 0) && (
           <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#ef4444' }}>
             Bu ürünün liste fiyatı girilmemiş. Önce ürünler sayfasından fiyat ekleyin.
           </div>
         )}
 
         {/* Sonuç */}
-        {showResult && selected && selected.list > 0 && (
+        {showResult && selected && Number(selected.list) > 0 && (
           <>
             {/* Ana fiyat kartı */}
             <div style={{
