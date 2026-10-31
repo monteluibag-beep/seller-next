@@ -19,6 +19,7 @@ export interface Product {
   description?: string;
   model?: string;
   color?: string;
+  productOptions?: { optionId: string; price: number }[];
   variants?: ProductVariant[];
 }
 

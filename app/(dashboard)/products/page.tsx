@@ -5,7 +5,8 @@ import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Product, Category, ProductVariant } from '@/types';
+import type { Product, Category, ProductVariant, ProductOption, MainSettings } from '@/types';
+import { getDoc } from 'firebase/firestore';
 import {
   IconPlus, IconSearch, IconEdit, IconTrash, IconPhoto, IconCamera, IconX, IconRefresh,
   IconDownload, IconScan, IconCopy, IconUpload, IconTemplate,
@@ -17,7 +18,7 @@ import * as XLSX from 'xlsx';
 import Pagination from '@/components/Pagination';
 
 const empty: Omit<Product, 'id'> = {
-  name: '', code: '', barcode: '', cost: 0, costUsd: 0, list: 0, stock: 0, photo: '', catName: '', model: '', color: '',
+  name: '', code: '', barcode: '', cost: 0, costUsd: 0, list: 0, stock: 0, photo: '', catName: '', model: '', color: '', productOptions: [],
 };
 
 function generateBarcode(products: Product[]): string {
@@ -209,6 +210,8 @@ function ProductsPageInner() {
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   // Resim hover popup
   const [hoverImg, setHoverImg] = useState<{ src: string; x: number; y: number } | null>(null);
+  // Global opsiyonlar (settings'ten)
+  const [globalOptions, setGlobalOptions] = useState<ProductOption[]>([]);
   // Inline hücre düzenleme
   const [inlineEdit, setInlineEdit] = useState<IE | null>(null);
   // Varyantlar
@@ -234,7 +237,7 @@ function ProductsPageInner() {
     return 0;
   }
 
-  useEffect(() => { load(); loadCats(); }, []);
+  useEffect(() => { load(); loadCats(); loadGlobalOptions(); }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 150);
@@ -256,6 +259,16 @@ function ProductsPageInner() {
   async function loadCats() {
     const snap = await getDocs(collection(db, 'categories'));
     setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
+  }
+
+  async function loadGlobalOptions() {
+    try {
+      const snap = await getDoc(doc(db, 'settings', 'main'));
+      if (snap.exists()) {
+        const s = snap.data() as MainSettings;
+        if (Array.isArray(s.options)) setGlobalOptions(s.options);
+      }
+    } catch {}
   }
 
   const filtered = useMemo(() => products.filter(p => {
@@ -460,7 +473,7 @@ function ProductsPageInner() {
     setForm({
       name: p.name || '', code: p.code || '', barcode: p.barcode || '',
       cost: p.cost ?? 0, costUsd: p.costUsd ?? 0, list: p.list ?? 0, stock: p.stock ?? 0,
-      photo: p.photo || '', catName: p.catName || '', model: p.model || '', color: p.color || '',
+      photo: p.photo || '', catName: p.catName || '', model: p.model || '', color: p.color || '', productOptions: p.productOptions || [],
     });
     setVariants(p.variants ? [...p.variants] : []);
     resetVariantInputs();
@@ -478,7 +491,7 @@ function ProductsPageInner() {
     setForm({
       name: p.name || '', code: newCode, barcode: newBarcode,
       cost: p.cost ?? 0, costUsd: p.costUsd ?? 0, list: p.list ?? 0, stock: 0,
-      photo: p.photo || '', catName: p.catName || '', model: p.model || '', color: p.color || '',
+      photo: p.photo || '', catName: p.catName || '', model: p.model || '', color: p.color || '', productOptions: p.productOptions || [],
     });
     setVariants(p.variants ? p.variants.map(v => ({ ...v })) : []);
     resetVariantInputs();
@@ -1282,6 +1295,63 @@ function ProductsPageInner() {
                   <input className="form-input" placeholder="örn: Lacivert, Kahverengi…" value={form.color || ''} onChange={e => set('color', e.target.value)} />
                 </div>
               </div>
+
+              {/* Opsiyonlar */}
+              {globalOptions.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
+                    Opsiyonlar <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opsiyonel)</span>
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {globalOptions.map(opt => {
+                      const existing = (form.productOptions || []).find(po => po.optionId === opt.id);
+                      const checked = !!existing;
+                      return (
+                        <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <input
+                            type="checkbox"
+                            id={`opt-${opt.id}`}
+                            checked={checked}
+                            onChange={e => {
+                              const cur = form.productOptions || [];
+                              if (e.target.checked) {
+                                set('productOptions', [...cur, { optionId: opt.id, price: opt.price }]);
+                              } else {
+                                set('productOptions', cur.filter(po => po.optionId !== opt.id));
+                              }
+                            }}
+                            style={{ width: 16, height: 16, accentColor: 'var(--or)', cursor: 'pointer', flexShrink: 0 }}
+                          />
+                          <label htmlFor={`opt-${opt.id}`} style={{ fontSize: 13, color: 'var(--text-1)', minWidth: 80, cursor: 'pointer' }}>{opt.name}</label>
+                          {checked && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <input
+                                type="number"
+                                min={0}
+                                value={existing!.price}
+                                onChange={e => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  set('productOptions', (form.productOptions || []).map(po =>
+                                    po.optionId === opt.id ? { ...po, price: val } : po
+                                  ));
+                                }}
+                                style={{ width: 80, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 13, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺</span>
+                              {existing!.price !== opt.price && (
+                                <span style={{ fontSize: 10, color: 'var(--text-3)' }}>(varsayılan: ₺{opt.price})</span>
+                              )}
+                            </div>
+                          )}
+                          {!checked && (
+                            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺{opt.price}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Varyantlar */}
