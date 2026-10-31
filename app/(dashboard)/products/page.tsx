@@ -207,6 +207,8 @@ function ProductsPageInner() {
   const [bulkSaving, setBulkSaving] = useState(false);
   // Ürün detay kartı
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+  // Resim hover popup
+  const [hoverImg, setHoverImg] = useState<{ src: string; x: number; y: number } | null>(null);
   // Inline hücre düzenleme
   const [inlineEdit, setInlineEdit] = useState<IE | null>(null);
   // Varyantlar
@@ -909,17 +911,15 @@ function ProductsPageInner() {
                           style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--or)' }} />
                       </td>
                       <td>
-                        <div className="prod-img-wrap">
-                          {p.photo
-                            ? <img src={p.photo} alt={p.name} className="prod-img-thumb" />
-                            : <div className="prod-img-thumb prod-img-empty"><IconPhoto size={28} color="var(--text-3)" /></div>
-                          }
-                          {p.photo && (
-                            <div className="prod-img-hover">
-                              <img src={p.photo} alt={p.name} style={{ width: 280, height: 280, objectFit: 'contain' }} />
-                            </div>
-                          )}
-                        </div>
+                        {p.photo
+                          ? <img
+                              src={p.photo} alt={p.name} className="prod-img-thumb"
+                              onMouseEnter={e => setHoverImg({ src: p.photo!, x: e.clientX, y: e.clientY })}
+                              onMouseMove={e => setHoverImg(h => h ? { ...h, x: e.clientX, y: e.clientY } : null)}
+                              onMouseLeave={() => setHoverImg(null)}
+                            />
+                          : <div className="prod-img-empty"><IconPhoto size={28} color="var(--text-3)" /></div>
+                        }
                       </td>
                       <td style={{ fontWeight: 600 }}>
                         {p.name}
@@ -1655,6 +1655,24 @@ function ProductsPageInner() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Resim hover popup — fixed, tüm kırpmalardan bağımsız */}
+      {hoverImg && (
+        <div style={{
+          position: 'fixed',
+          left: hoverImg.x + 16,
+          top: hoverImg.y - 160,
+          zIndex: 99999,
+          background: 'var(--surface)',
+          border: '1px solid var(--border-2)',
+          borderRadius: 16,
+          padding: 14,
+          boxShadow: '0 16px 48px rgba(0,0,0,.6)',
+          pointerEvents: 'none',
+        }}>
+          <img src={hoverImg.src} alt="" style={{ width: 300, height: 300, objectFit: 'contain', display: 'block', background: '#fff', borderRadius: 8 }} />
         </div>
       )}
     </>
