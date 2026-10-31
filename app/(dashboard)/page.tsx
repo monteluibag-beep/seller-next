@@ -2,7 +2,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, IconX, IconSearch, IconTag } from '@tabler/icons-react';
+import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, IconX, IconSearch, IconTag, IconChevronDown } from '@tabler/icons-react';
 import Link from 'next/link';
 import { collection, getDocs, query, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -72,6 +72,7 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
   const [selectedOptions, setSelectedOptions] = useState<Record<string, boolean>>({});
   const [optionPrices, setOptionPrices] = useState<Record<string, string>>({});
   const [dropOpen, setDropOpen] = useState(false);
+  const [optsOpen, setOptsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -264,50 +265,67 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
           </div>
         )}
 
-        {/* Opsiyonlar — her zaman görünür, ürün seçilince aktif */}
-        {availableOptions.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: .4 }}>
-              Opsiyon
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {availableOptions.map(opt => (
-                <label
-                  key={opt.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
-                    border: selectedOptions[opt.id] ? '1.5px solid rgba(232,93,4,.5)' : '1px solid var(--border)',
-                    background: selectedOptions[opt.id] ? 'rgba(232,93,4,.07)' : 'var(--surface-2)',
-                    transition: 'all .15s',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!selectedOptions[opt.id]}
-                    onChange={e => setSelectedOptions(prev => ({ ...prev, [opt.id]: e.target.checked }))}
-                    style={{ width: 15, height: 15, accentColor: '#E85D04', flexShrink: 0 }}
-                  />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{opt.name}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                    <input
-                      type="number"
-                      value={optionPrices[opt.id] ?? ''}
-                      onChange={e => setOptionPrices(prev => ({ ...prev, [opt.id]: e.target.value }))}
-                      onClick={e => e.stopPropagation()}
+        {/* Opsiyonlar */}
+        {availableOptions.length > 0 && (() => {
+          const selCount = Object.values(selectedOptions).filter(Boolean).length;
+          return (
+            <div style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+              <button
+                type="button"
+                onClick={() => setOptsOpen(v => !v)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'var(--surface-2)', border: 'none', cursor: 'pointer' }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                  Opsiyonlar
+                  {selCount > 0 && (
+                    <span style={{ marginLeft: 8, fontSize: 11, background: 'rgba(232,93,4,.15)', color: '#E85D04', padding: '1px 8px', borderRadius: 10, fontWeight: 700 }}>
+                      {selCount} seçili
+                    </span>
+                  )}
+                </span>
+                <IconChevronDown size={16} style={{ color: 'var(--text-3)', transform: optsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+              </button>
+              {optsOpen && (
+                <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {availableOptions.map(opt => (
+                    <label
+                      key={opt.id}
                       style={{
-                        width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 13, fontWeight: 700,
-                        border: '1px solid var(--border-2)', background: 'var(--surface)',
-                        color: selectedOptions[opt.id] ? '#E85D04' : 'var(--text-2)', textAlign: 'right',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
+                        border: selectedOptions[opt.id] ? '1.5px solid rgba(232,93,4,.5)' : '1px solid var(--border)',
+                        background: selectedOptions[opt.id] ? 'rgba(232,93,4,.07)' : 'var(--surface-2)',
+                        transition: 'all .15s',
                       }}
-                    />
-                    <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺</span>
-                  </div>
-                </label>
-              ))}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!selectedOptions[opt.id]}
+                        onChange={e => setSelectedOptions(prev => ({ ...prev, [opt.id]: e.target.checked }))}
+                        style={{ width: 15, height: 15, accentColor: '#E85D04', flexShrink: 0 }}
+                      />
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{opt.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                        <input
+                          type="number"
+                          value={optionPrices[opt.id] ?? ''}
+                          onChange={e => setOptionPrices(prev => ({ ...prev, [opt.id]: e.target.value }))}
+                          onClick={e => e.stopPropagation()}
+                          style={{
+                            width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 13, fontWeight: 700,
+                            border: '1px solid var(--border-2)', background: 'var(--surface)',
+                            color: selectedOptions[opt.id] ? '#E85D04' : 'var(--text-2)', textAlign: 'right',
+                          }}
+                        />
+                        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Sonuç */}
         {showResult && selected && Number(selected.list) > 0 && (

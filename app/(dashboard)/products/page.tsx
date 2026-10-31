@@ -9,7 +9,7 @@ import type { Product, Category, ProductVariant, ProductOption, MainSettings } f
 import { getDoc } from 'firebase/firestore';
 import {
   IconPlus, IconSearch, IconEdit, IconTrash, IconPhoto, IconCamera, IconX, IconRefresh,
-  IconDownload, IconScan, IconCopy, IconUpload, IconTemplate,
+  IconDownload, IconScan, IconCopy, IconUpload, IconTemplate, IconChevronDown,
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useRates } from '@/hooks/useRates';
@@ -212,6 +212,7 @@ function ProductsPageInner() {
   const [hoverImg, setHoverImg] = useState<{ src: string; x: number; y: number } | null>(null);
   // Global opsiyonlar (settings'ten)
   const [globalOptions, setGlobalOptions] = useState<ProductOption[]>([]);
+  const [productOptsOpen, setProductOptsOpen] = useState(false);
   // Inline hücre düzenleme
   const [inlineEdit, setInlineEdit] = useState<IE | null>(null);
   // Varyantlar
@@ -1297,61 +1298,77 @@ function ProductsPageInner() {
               </div>
 
               {/* Opsiyonlar */}
-              {globalOptions.length > 0 && (
-                <div style={{ marginTop: 14 }}>
-                  <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
-                    Opsiyonlar <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opsiyonel)</span>
-                  </label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {globalOptions.map(opt => {
-                      const existing = (form.productOptions || []).find(po => po.optionId === opt.id);
-                      const checked = !!existing;
-                      return (
-                        <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <input
-                            type="checkbox"
-                            id={`opt-${opt.id}`}
-                            checked={checked}
-                            onChange={e => {
-                              const cur = form.productOptions || [];
-                              if (e.target.checked) {
-                                set('productOptions', [...cur, { optionId: opt.id, price: opt.price }]);
-                              } else {
-                                set('productOptions', cur.filter(po => po.optionId !== opt.id));
-                              }
-                            }}
-                            style={{ width: 16, height: 16, accentColor: 'var(--or)', cursor: 'pointer', flexShrink: 0 }}
-                          />
-                          <label htmlFor={`opt-${opt.id}`} style={{ fontSize: 13, color: 'var(--text-1)', minWidth: 80, cursor: 'pointer' }}>{opt.name}</label>
-                          {checked && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {globalOptions.length > 0 && (() => {
+                const selectedCount = (form.productOptions || []).length;
+                return (
+                  <div style={{ marginTop: 14, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                    <button
+                      type="button"
+                      onClick={() => setProductOptsOpen(v => !v)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface-2)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                        Opsiyonlar
+                        {selectedCount > 0 && (
+                          <span style={{ marginLeft: 8, fontSize: 11, background: 'rgba(232,93,4,.15)', color: '#E85D04', padding: '1px 8px', borderRadius: 10, fontWeight: 700 }}>
+                            {selectedCount} seçili
+                          </span>
+                        )}
+                      </span>
+                      <IconChevronDown size={16} style={{ color: 'var(--text-3)', transform: productOptsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                    </button>
+                    {productOptsOpen && (
+                      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {globalOptions.map(opt => {
+                          const existing = (form.productOptions || []).find(po => po.optionId === opt.id);
+                          const checked = !!existing;
+                          return (
+                            <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <input
-                                type="number"
-                                min={0}
-                                value={existing!.price}
+                                type="checkbox"
+                                id={`opt-${opt.id}`}
+                                checked={checked}
                                 onChange={e => {
-                                  const val = parseFloat(e.target.value) || 0;
-                                  set('productOptions', (form.productOptions || []).map(po =>
-                                    po.optionId === opt.id ? { ...po, price: val } : po
-                                  ));
+                                  const cur = form.productOptions || [];
+                                  if (e.target.checked) {
+                                    set('productOptions', [...cur, { optionId: opt.id, price: opt.price }]);
+                                  } else {
+                                    set('productOptions', cur.filter(po => po.optionId !== opt.id));
+                                  }
                                 }}
-                                style={{ width: 80, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-1)', fontSize: 13, outline: 'none' }}
+                                style={{ width: 16, height: 16, accentColor: 'var(--or)', cursor: 'pointer', flexShrink: 0 }}
                               />
-                              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺</span>
-                              {existing!.price !== opt.price && (
-                                <span style={{ fontSize: 10, color: 'var(--text-3)' }}>(varsayılan: ₺{opt.price})</span>
+                              <label htmlFor={`opt-${opt.id}`} style={{ fontSize: 13, color: 'var(--text-1)', flex: 1, cursor: 'pointer' }}>{opt.name}</label>
+                              {checked ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={existing!.price}
+                                    onChange={e => {
+                                      const val = parseFloat(e.target.value) || 0;
+                                      set('productOptions', (form.productOptions || []).map(po =>
+                                        po.optionId === opt.id ? { ...po, price: val } : po
+                                      ));
+                                    }}
+                                    style={{ width: 80, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-1)', fontSize: 13, outline: 'none' }}
+                                  />
+                                  <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺</span>
+                                  {existing!.price !== opt.price && (
+                                    <span style={{ fontSize: 10, color: 'var(--text-3)' }}>(def: ₺{opt.price})</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺{opt.price}</span>
                               )}
                             </div>
-                          )}
-                          {!checked && (
-                            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺{opt.price}</span>
-                          )}
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Varyantlar */}

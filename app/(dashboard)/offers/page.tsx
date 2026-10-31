@@ -62,6 +62,7 @@ export default function OffersPage() {
   // Opsiyon state
   const [selectedOfferOptions, setSelectedOfferOptions] = useState<Record<string, boolean>>({});
   const [offerOptionPrices, setOfferOptionPrices] = useState<Record<string, string>>({});
+  const [offerOptsOpen, setOfferOptsOpen] = useState(false);
 
   useEffect(() => { load(); loadProducts(); loadSettings(); }, []);
 
@@ -922,52 +923,71 @@ export default function OffersPage() {
             )}
 
             {/* Opsiyon seçici */}
-            {(settings?.options || []).length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: .4 }}>Opsiyon</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {(settings!.options).map(opt => (
-                    <label
-                      key={opt.id}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
-                        border: selectedOfferOptions[opt.id] ? '1.5px solid rgba(232,93,4,.5)' : '1px solid var(--border)',
-                        background: selectedOfferOptions[opt.id] ? 'rgba(232,93,4,.07)' : 'var(--surface-2)',
-                        transition: 'all .15s', userSelect: 'none',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={!!selectedOfferOptions[opt.id]}
-                        onChange={e => setSelectedOfferOptions(prev => ({ ...prev, [opt.id]: e.target.checked }))}
-                        style={{ width: 15, height: 15, accentColor: '#E85D04', flexShrink: 0 }}
-                      />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{opt.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <input
-                          type="number"
-                          value={offerOptionPrices[opt.id] ?? ''}
-                          onChange={e => setOfferOptionPrices(prev => ({ ...prev, [opt.id]: e.target.value }))}
-                          onClick={e => e.stopPropagation()}
+            {(settings?.options || []).length > 0 && (() => {
+              const selCount = Object.values(selectedOfferOptions).filter(Boolean).length;
+              return (
+                <div style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    onClick={() => setOfferOptsOpen(v => !v)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'var(--surface-2)', border: 'none', cursor: 'pointer' }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                      Opsiyonlar
+                      {selCount > 0 && (
+                        <span style={{ marginLeft: 8, fontSize: 11, background: 'rgba(232,93,4,.15)', color: '#E85D04', padding: '1px 8px', borderRadius: 10, fontWeight: 700 }}>
+                          {selCount} seçili
+                        </span>
+                      )}
+                    </span>
+                    <IconChevronDown size={16} style={{ color: 'var(--text-3)', transform: offerOptsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                  </button>
+                  {offerOptsOpen && (
+                    <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {(settings!.options).map(opt => (
+                        <label
+                          key={opt.id}
                           style={{
-                            width: 64, padding: '2px 5px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                            border: '1px solid var(--border-2)', background: 'var(--surface)',
-                            color: selectedOfferOptions[opt.id] ? '#E85D04' : 'var(--text-2)', textAlign: 'right',
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
+                            border: selectedOfferOptions[opt.id] ? '1.5px solid rgba(232,93,4,.5)' : '1px solid var(--border)',
+                            background: selectedOfferOptions[opt.id] ? 'rgba(232,93,4,.07)' : 'var(--surface-2)',
+                            transition: 'all .15s', userSelect: 'none',
                           }}
-                        />
-                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{sym}/adet</span>
-                      </div>
-                    </label>
-                  ))}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!!selectedOfferOptions[opt.id]}
+                            onChange={e => setSelectedOfferOptions(prev => ({ ...prev, [opt.id]: e.target.checked }))}
+                            style={{ width: 15, height: 15, accentColor: '#E85D04', flexShrink: 0 }}
+                          />
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{opt.name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <input
+                              type="number"
+                              value={offerOptionPrices[opt.id] ?? ''}
+                              onChange={e => setOfferOptionPrices(prev => ({ ...prev, [opt.id]: e.target.value }))}
+                              onClick={e => e.stopPropagation()}
+                              style={{
+                                width: 64, padding: '2px 5px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                                border: '1px solid var(--border-2)', background: 'var(--surface)',
+                                color: selectedOfferOptions[opt.id] ? '#E85D04' : 'var(--text-2)', textAlign: 'right',
+                              }}
+                            />
+                            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{sym}/adet</span>
+                          </div>
+                        </label>
+                      ))}
+                      {optionsTotalDisplay > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                          Opsiyon toplamı: <strong style={{ color: '#E85D04' }}>{sym}{optionsTotalDisplay.toFixed(2)}</strong> ({totalQty} adet × {sym}{optionsTotalPerUnit.toFixed(2)})
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {optionsTotalDisplay > 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
-                    Opsiyon toplamı: <strong style={{ color: '#E85D04' }}>{sym}{optionsTotalDisplay.toFixed(2)}</strong> ({totalQty} adet × {sym}{optionsTotalPerUnit.toFixed(2)})
-                  </div>
-                )}
-              </div>
-            )}
+              );
+            })()}
 
             {/* Profit analysis panel — internal only */}
             {items.length > 0 && (
