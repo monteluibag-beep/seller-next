@@ -233,8 +233,11 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
             <button
               className="btn btn-primary"
               style={{ height: 42, paddingLeft: 24, paddingRight: 24, fontSize: 14 }}
-              disabled={!selected}
-              onClick={() => setShowResult(true)}
+              disabled={!selected && filtered.length === 0}
+              onClick={() => {
+                if (!selected && filtered.length > 0) pick(filtered[0]);
+                setShowResult(true);
+              }}
             >
               Fiyat Sor
             </button>
