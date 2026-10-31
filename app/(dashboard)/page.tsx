@@ -82,10 +82,12 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
   }, []);
 
   const filtered = search.length >= 1
-    ? products.filter(p =>
-        (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (p.code || '').toLowerCase().includes(search.toLowerCase())
-      ).slice(0, 8)
+    ? products.filter(p => {
+        const q = search.toLowerCase().replace(/\s+/g, '');
+        const name = (p.name || '').toLowerCase().replace(/\s+/g, '');
+        const code = (p.code || '').toLowerCase().replace(/\s+/g, '');
+        return name.includes(q) || code.includes(q);
+      }).slice(0, 8)
     : [];
 
   function pick(p: Product) {
