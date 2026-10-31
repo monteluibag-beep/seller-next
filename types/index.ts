@@ -17,6 +17,8 @@ export interface Product {
   photo?: string;
   catName: string;
   description?: string;
+  model?: string;
+  color?: string;
   variants?: ProductVariant[];
 }
 
@@ -142,6 +144,12 @@ export interface DiscountTier {
   rate: number;
 }
 
+export interface ProductOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface MainSettings {
   firmName: string;
   firmAddress: string;
@@ -151,4 +159,5 @@ export interface MainSettings {
   bankInfo: string;
   invoiceInfo: string;
   discounts: DiscountTier[];
+  options: ProductOption[];
 }

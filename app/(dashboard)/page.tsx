@@ -6,7 +6,7 @@ import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, Ico
 import Link from 'next/link';
 import { collection, getDocs, query, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Product, Sale, Offer, DiscountTier } from '@/types';
+import type { Product, Sale, Offer, DiscountTier, ProductOption } from '@/types';
 import { useRates } from '@/hooks/useRates';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -68,6 +68,9 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
   const [qty, setQty] = useState('1');
   const [showResult, setShowResult] = useState(false);
   const [tiers, setTiers] = useState<DiscountTier[]>(DEFAULT_DISCOUNTS);
+  const [availableOptions, setAvailableOptions] = useState<ProductOption[]>([]);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, boolean>>({});
+  const [optionPrices, setOptionPrices] = useState<Record<string, string>>({});
   const [dropOpen, setDropOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +79,12 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
       if (snap.exists()) {
         const d = snap.data();
         if (Array.isArray(d.discounts) && d.discounts.length > 0) setTiers(d.discounts);
+        if (Array.isArray(d.options) && d.options.length > 0) {
+          setAvailableOptions(d.options);
+          const prices: Record<string, string> = {};
+          d.options.forEach((o: ProductOption) => { prices[o.id] = String(o.price || ''); });
+          setOptionPrices(prices);
+        }
       }
     }).catch(() => {});
     inputRef.current?.focus();
@@ -100,7 +109,6 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
   const qtyNum = Math.max(1, parseInt(qty.replace(',', '.')) || 1);
   const discRate = selected ? getDiscountRate(qtyNum, tiers) : 0;
   const unitPrice = selected ? Number(selected.list) * (1 - discRate / 100) : 0;
-  const totalPrice = unitPrice * qtyNum;
 
   // Özel fiyat: costUsd * 1.25 (admin için)
   const isAdmin = role === 'admin';
@@ -109,6 +117,11 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
   const ozelUnitEur = ozelUnitUsd ? ozelUnitUsd * rates.USD / rates.EUR : null;
   const ozelTotalUsd = ozelUnitUsd ? ozelUnitUsd * qtyNum : null;
   const ozelTotalEur = ozelUnitEur ? ozelUnitEur * qtyNum : null;
+
+  // Opsiyon toplamı
+  const optionsTotal = availableOptions
+    .filter(o => selectedOptions[o.id])
+    .reduce((sum, o) => sum + (parseFloat(optionPrices[o.id] || '0') || 0), 0);
 
   // Tüm tier basamakları — seçilen adet için hangisi uygulanıyor vurgu
   const sortedTiers = [...tiers].sort((a, b) => a.qty - b.qty);
@@ -251,6 +264,51 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
           </div>
         )}
 
+        {/* Opsiyonlar — her zaman görünür, ürün seçilince aktif */}
+        {availableOptions.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: .4 }}>
+              Opsiyon
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {availableOptions.map(opt => (
+                <label
+                  key={opt.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
+                    border: selectedOptions[opt.id] ? '1.5px solid rgba(232,93,4,.5)' : '1px solid var(--border)',
+                    background: selectedOptions[opt.id] ? 'rgba(232,93,4,.07)' : 'var(--surface-2)',
+                    transition: 'all .15s',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!selectedOptions[opt.id]}
+                    onChange={e => setSelectedOptions(prev => ({ ...prev, [opt.id]: e.target.checked }))}
+                    style={{ width: 15, height: 15, accentColor: '#E85D04', flexShrink: 0 }}
+                  />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{opt.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    <input
+                      type="number"
+                      value={optionPrices[opt.id] ?? ''}
+                      onChange={e => setOptionPrices(prev => ({ ...prev, [opt.id]: e.target.value }))}
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 13, fontWeight: 700,
+                        border: '1px solid var(--border-2)', background: 'var(--surface)',
+                        color: selectedOptions[opt.id] ? '#E85D04' : 'var(--text-2)', textAlign: 'right',
+                      }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--text-3)' }}>₺</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Sonuç */}
         {showResult && selected && Number(selected.list) > 0 && (
           <>
@@ -264,15 +322,20 @@ function PriceModal({ products, onClose, role }: { products: Product[]; onClose:
                 {discRate > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,255,255,.2)', borderRadius: 6, padding: '1px 8px', fontSize: 11 }}>%{discRate} indirim</span>}
               </div>
               <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1 }}>
-                ₺{unitPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                ₺{(unitPrice + optionsTotal).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </div>
+              {optionsTotal > 0 && (
+                <div style={{ fontSize: 11, opacity: .75, marginTop: 3 }}>
+                  Ürün: ₺{unitPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} + Opsiyon: ₺{optionsTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 13, opacity: .85 }}>
-                <span>${(unitPrice / rates.USD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span>€{(unitPrice / rates.EUR).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>${((unitPrice + optionsTotal) / rates.USD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>€{((unitPrice + optionsTotal) / rates.EUR).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div style={{ fontSize: 12, opacity: .70, marginTop: 4 }}>
-                Toplam: ₺{totalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                {' · '}${(totalPrice / rates.USD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                Toplam: ₺{((unitPrice + optionsTotal) * qtyNum).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                {' · '}${((unitPrice + optionsTotal) * qtyNum / rates.USD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 {discRate === 0 && <span style={{ marginLeft: 8 }}>· İndirim yok</span>}
               </div>
             </div>

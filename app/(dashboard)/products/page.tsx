@@ -17,7 +17,7 @@ import * as XLSX from 'xlsx';
 import Pagination from '@/components/Pagination';
 
 const empty: Omit<Product, 'id'> = {
-  name: '', code: '', barcode: '', cost: 0, costUsd: 0, list: 0, stock: 0, photo: '', catName: '',
+  name: '', code: '', barcode: '', cost: 0, costUsd: 0, list: 0, stock: 0, photo: '', catName: '', model: '', color: '',
 };
 
 function generateBarcode(products: Product[]): string {
@@ -460,7 +460,7 @@ function ProductsPageInner() {
     setForm({
       name: p.name || '', code: p.code || '', barcode: p.barcode || '',
       cost: p.cost ?? 0, costUsd: p.costUsd ?? 0, list: p.list ?? 0, stock: p.stock ?? 0,
-      photo: p.photo || '', catName: p.catName || '',
+      photo: p.photo || '', catName: p.catName || '', model: p.model || '', color: p.color || '',
     });
     setVariants(p.variants ? [...p.variants] : []);
     resetVariantInputs();
@@ -478,7 +478,7 @@ function ProductsPageInner() {
     setForm({
       name: p.name || '', code: newCode, barcode: newBarcode,
       cost: p.cost ?? 0, costUsd: p.costUsd ?? 0, list: p.list ?? 0, stock: 0,
-      photo: p.photo || '', catName: p.catName || '',
+      photo: p.photo || '', catName: p.catName || '', model: p.model || '', color: p.color || '',
     });
     setVariants(p.variants ? p.variants.map(v => ({ ...v })) : []);
     resetVariantInputs();
@@ -1271,6 +1271,17 @@ function ProductsPageInner() {
                   </div>
                 </div>
               )}
+              {/* Model + Renk */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Model <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opsiyonel)</span></label>
+                  <input className="form-input" placeholder="örn: Classic, Sport, Premium…" value={form.model || ''} onChange={e => set('model', e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Renk <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opsiyonel)</span></label>
+                  <input className="form-input" placeholder="örn: Lacivert, Kahverengi…" value={form.color || ''} onChange={e => set('color', e.target.value)} />
+                </div>
+              </div>
             </div>
 
             {/* Varyantlar */}
@@ -1520,6 +1531,12 @@ function ProductsPageInner() {
                       <span style={{ fontSize: 10, background: 'rgba(139,92,246,.12)', color: '#8B5CF6', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>{p.variants.length} varyant</span>
                     )}
                   </div>
+                  {(p.model || p.color) && (
+                    <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
+                      {p.model && <span style={{ fontSize: 10, background: 'rgba(16,185,129,.1)', color: '#10b981', padding: '2px 7px', borderRadius: 5, fontWeight: 600 }}>Model: {p.model}</span>}
+                      {p.color && <span style={{ fontSize: 10, background: 'rgba(139,92,246,.1)', color: '#8B5CF6', padding: '2px 7px', borderRadius: 5, fontWeight: 600 }}>Renk: {p.color}</span>}
+                    </div>
+                  )}
                   {p.description && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, lineHeight: 1.4 }}>{p.description}</div>}
                 </div>
                 <button onClick={() => setDetailProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0, padding: 2 }}><IconX size={18} /></button>

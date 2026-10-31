@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { MainSettings, DiscountTier } from '@/types';
-import { IconPlus, IconTrash, IconDeviceFloppy, IconCheck } from '@tabler/icons-react';
+import type { MainSettings, DiscountTier, ProductOption } from '@/types';
+import { IconPlus, IconTrash, IconDeviceFloppy, IconCheck, IconBuilding, IconPercentage, IconTag } from '@tabler/icons-react';
 
 const DEFAULT_SETTINGS: MainSettings = {
   firmName: 'Çalışkan Çanta',
@@ -18,13 +18,17 @@ const DEFAULT_SETTINGS: MainSettings = {
     { qty: 40, rate: 25 }, { qty: 50, rate: 30 }, { qty: 100, rate: 35 },
     { qty: 200, rate: 40 }, { qty: 500, rate: 50 }, { qty: 1000, rate: 55 },
   ],
+  options: [],
 };
+
+type Tab = 'firma' | 'iskonto' | 'opsiyon';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<MainSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState<Tab>('firma');
 
   useEffect(() => { load(); }, []);
 
@@ -72,6 +76,28 @@ export default function SettingsPage() {
     setSettings(s => ({ ...s, discounts: s.discounts.filter((_, idx) => idx !== i) }));
   }
 
+  function addOption() {
+    const id = Date.now().toString();
+    setSettings(s => ({ ...s, options: [...(s.options || []), { id, name: '', price: 0 }] }));
+  }
+
+  function updateOption(id: string, field: keyof ProductOption, val: string | number) {
+    setSettings(s => ({
+      ...s,
+      options: (s.options || []).map(o => o.id === id ? { ...o, [field]: val } : o),
+    }));
+  }
+
+  function removeOption(id: string) {
+    setSettings(s => ({ ...s, options: (s.options || []).filter(o => o.id !== id) }));
+  }
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
+    { id: 'firma', label: 'Firma', icon: <IconBuilding size={15} /> },
+    { id: 'iskonto', label: 'İskonto Kademeleri', icon: <IconPercentage size={15} />, badge: settings.discounts.length },
+    { id: 'opsiyon', label: 'Opsiyonlar', icon: <IconTag size={15} />, badge: (settings.options || []).length },
+  ];
+
   if (loading) return (
     <>
       <div className="topbar"><div className="page-title">Ayarlar</div></div>
@@ -84,7 +110,7 @@ export default function SettingsPage() {
       <div className="topbar">
         <div>
           <div className="page-title">Ayarlar</div>
-          <div className="page-sub">Firma bilgileri ve iskonto oranları</div>
+          <div className="page-sub">Firma bilgileri, iskonto ve opsiyonlar</div>
         </div>
         <button className="btn btn-primary" onClick={save} disabled={saving}>
           {saved ? <><IconCheck size={16} /> Kaydedildi</> : <><IconDeviceFloppy size={16} /> {saving ? 'Kaydediliyor...' : 'Kaydet'}</>}
@@ -92,152 +118,208 @@ export default function SettingsPage() {
       </div>
 
       <div className="page-content">
-        <div className="grid-2" style={{ alignItems: 'start' }}>
-
-          {/* Firm Info */}
-          <div className="card" style={{ marginBottom: 0 }}>
-            <div className="card-header">
-              <div className="card-title">Firma Bilgileri</div>
-            </div>
-            <div style={{ padding: '20px 18px' }}>
-              <div className="form-group">
-                <label className="form-label">Firma Adı</label>
-                <input className="form-input" value={settings.firmName} onChange={e => setField('firmName', e.target.value)} placeholder="Çalışkan Çanta" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Adres</label>
-                <textarea
-                  className="form-input"
-                  value={settings.firmAddress}
-                  onChange={e => setField('firmAddress', e.target.value)}
-                  placeholder="Adres satırı"
-                  rows={3}
-                  style={{ resize: 'vertical' }}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label className="form-label">Telefon</label>
-                  <input className="form-input" value={settings.firmPhone} onChange={e => setField('firmPhone', e.target.value)} placeholder="+90 (212) 000 00 00" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">E-posta</label>
-                  <input className="form-input" type="email" value={settings.firmEmail} onChange={e => setField('firmEmail', e.target.value)} placeholder="info@firma.com" />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Teklif Koşulları / Alt Notu</label>
-                <textarea
-                  className="form-input"
-                  value={settings.offerTerms}
-                  onChange={e => setField('offerTerms', e.target.value)}
-                  placeholder="Fiyatlar KDV hariçtir. Teklif geçerlilik süresi 30 gündür..."
-                  rows={4}
-                  style={{ resize: 'vertical' }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Bank + Invoice Info */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-            <div className="card" style={{ marginBottom: 0 }}>
-              <div className="card-header">
-                <div className="card-title">Hesap Bilgilerimiz</div>
-              </div>
-              <div style={{ padding: '16px 18px' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">TL / Döviz Hesap Bilgileri</label>
-                  <textarea
-                    className="form-input"
-                    value={settings.bankInfo}
-                    onChange={e => setField('bankInfo', e.target.value)}
-                    placeholder={`Banka Adı: Ziraat Bankası\nHesap Adı: Çalışkan Çanta Ltd.\nIBAN (TL): TR00 0000 0000 0000 0000 0000 00\n\nBanka Adı: Garanti BBVA\nHesap Adı: Çalışkan Çanta Ltd.\nIBAN (USD): TR00 0000 0000 0000 0000 0000 00`}
-                    rows={7}
-                    style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="card" style={{ marginBottom: 0 }}>
-              <div className="card-header">
-                <div className="card-title">Fatura Bilgilerimiz</div>
-              </div>
-              <div style={{ padding: '16px 18px' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Vergi No, Vergi Dairesi, Adres</label>
-                  <textarea
-                    className="form-input"
-                    value={settings.invoiceInfo}
-                    onChange={e => setField('invoiceInfo', e.target.value)}
-                    placeholder={`Ünvan: Çalışkan Çanta Tekstil Ltd. Şti.\nVergi Dairesi: Bağcılar VD.\nVergi No: 1234567890\nAdres: Örnek Mah. Örnek Sk. No:1 Bağcılar / İstanbul`}
-                    rows={5}
-                    style={{ resize: 'vertical' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-          {/* Discounts */}
-          <div className="card" style={{ marginBottom: 0 }}>
-            <div className="card-header">
-              <div className="card-title">İskonto Kademeleri</div>
-              <button className="btn btn-secondary btn-sm" onClick={addDiscount}>
-                <IconPlus size={13} /> Ekle
-              </button>
-            </div>
-            <div style={{ padding: '8px 18px 20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 36px', gap: 8, padding: '8px 0', borderBottom: '1px solid #f0f0f0', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: .5 }}>Min. Adet</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: .5 }}>İskonto (%)</div>
-                <div />
-              </div>
-              {settings.discounts.map((tier, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 36px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                  <input
-                    className="form-input"
-                    type="number" min={1}
-                    value={tier.qty}
-                    onChange={e => updateDiscount(i, 'qty', parseInt(e.target.value) || 0)}
-                    placeholder="Adet"
-                  />
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-input"
-                      type="number" min={0} max={100} step={0.5}
-                      value={tier.rate}
-                      onChange={e => updateDiscount(i, 'rate', parseFloat(e.target.value) || 0)}
-                      placeholder="Oran"
-                      style={{ paddingRight: 28 }}
-                    />
-                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#aaa', fontSize: 13 }}>%</span>
-                  </div>
-                  <button
-                    onClick={() => removeDiscount(i)}
-                    style={{ width: 32, height: 36, background: 'rgba(239,68,68,.1)', color: '#DC2626', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <IconTrash size={13} />
-                  </button>
-                </div>
-              ))}
-              {settings.discounts.length === 0 && (
-                <div style={{ padding: '20px 0', textAlign: 'center', color: '#aaa', fontSize: 13 }}>
-                  Henüz iskonto kademesi eklenmedi
-                </div>
+        {/* Tab bar */}
+        <div style={{
+          display: 'flex', gap: 2, marginBottom: 20,
+          borderBottom: '2px solid var(--border)',
+          overflowX: 'auto',
+        }}>
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '10px 18px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: tab === t.id ? 700 : 500,
+                color: tab === t.id ? '#E85D04' : 'var(--text-2)',
+                borderBottom: tab === t.id ? '2px solid #E85D04' : '2px solid transparent',
+                marginBottom: -2,
+                whiteSpace: 'nowrap',
+                transition: 'color .15s',
+              }}
+            >
+              {t.icon}
+              {t.label}
+              {t.badge !== undefined && t.badge > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, minWidth: 18, height: 18,
+                  background: tab === t.id ? '#E85D04' : 'var(--surface-2)',
+                  color: tab === t.id ? '#fff' : 'var(--text-3)',
+                  borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 5px',
+                }}>
+                  {t.badge}
+                </span>
               )}
-              <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8f8f8', borderRadius: 8, fontSize: 12, color: '#666' }}>
-                <strong>Mevcut kademeler:</strong>{' '}
-                {settings.discounts.length > 0
-                  ? settings.discounts.map(t => `${t.qty}+ adet → %${t.rate}`).join(', ')
-                  : '—'}
+            </button>
+          ))}
+        </div>
+
+        {/* ── FİRMA ── */}
+        {tab === 'firma' && (
+          <div className="grid-2" style={{ alignItems: 'start' }}>
+            <div className="card" style={{ marginBottom: 0 }}>
+              <div className="card-header"><div className="card-title">Firma Bilgileri</div></div>
+              <div style={{ padding: '20px 18px' }}>
+                <div className="form-group">
+                  <label className="form-label">Firma Adı</label>
+                  <input className="form-input" value={settings.firmName} onChange={e => setField('firmName', e.target.value)} placeholder="Çalışkan Çanta" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Adres</label>
+                  <textarea className="form-input" value={settings.firmAddress} onChange={e => setField('firmAddress', e.target.value)} placeholder="Adres satırı" rows={3} style={{ resize: 'vertical' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">Telefon</label>
+                    <input className="form-input" value={settings.firmPhone} onChange={e => setField('firmPhone', e.target.value)} placeholder="+90 (212) 000 00 00" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">E-posta</label>
+                    <input className="form-input" type="email" value={settings.firmEmail} onChange={e => setField('firmEmail', e.target.value)} placeholder="info@firma.com" />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Teklif Koşulları / Alt Notu</label>
+                  <textarea className="form-input" value={settings.offerTerms} onChange={e => setField('offerTerms', e.target.value)} placeholder="Fiyatlar KDV hariçtir. Teklif geçerlilik süresi 30 gündür..." rows={4} style={{ resize: 'vertical' }} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="card" style={{ marginBottom: 0 }}>
+                <div className="card-header"><div className="card-title">Hesap Bilgilerimiz</div></div>
+                <div style={{ padding: '16px 18px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">TL / Döviz Hesap Bilgileri</label>
+                    <textarea
+                      className="form-input"
+                      value={settings.bankInfo}
+                      onChange={e => setField('bankInfo', e.target.value)}
+                      placeholder={`Banka Adı: Ziraat Bankası\nHesap Adı: Çalışkan Çanta Ltd.\nIBAN (TL): TR00 0000 0000 0000 0000 0000 00`}
+                      rows={7}
+                      style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="card" style={{ marginBottom: 0 }}>
+                <div className="card-header"><div className="card-title">Fatura Bilgilerimiz</div></div>
+                <div style={{ padding: '16px 18px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Vergi No, Vergi Dairesi, Adres</label>
+                    <textarea
+                      className="form-input"
+                      value={settings.invoiceInfo}
+                      onChange={e => setField('invoiceInfo', e.target.value)}
+                      placeholder={`Ünvan: Çalışkan Çanta Tekstil Ltd. Şti.\nVergi Dairesi: Bağcılar VD.\nVergi No: 1234567890`}
+                      rows={5}
+                      style={{ resize: 'vertical' }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          </div>{/* end flex column */}
+        )}
 
-        </div>{/* end grid-2 */}
+        {/* ── İSKONTO KADEMELERİ ── */}
+        {tab === 'iskonto' && (
+          <div style={{ maxWidth: 560 }}>
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">İskonto Kademeleri</div>
+                <button className="btn btn-secondary btn-sm" onClick={addDiscount}>
+                  <IconPlus size={13} /> Ekle
+                </button>
+              </div>
+              <div style={{ padding: '8px 18px 20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 36px', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--border)', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: .5 }}>Min. Adet</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: .5 }}>İskonto (%)</div>
+                  <div />
+                </div>
+                {settings.discounts.map((tier, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 36px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                    <input className="form-input" type="number" min={1} value={tier.qty} onChange={e => updateDiscount(i, 'qty', parseInt(e.target.value) || 0)} placeholder="Adet" />
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input" type="number" min={0} max={100} step={0.5} value={tier.rate} onChange={e => updateDiscount(i, 'rate', parseFloat(e.target.value) || 0)} placeholder="Oran" style={{ paddingRight: 28 }} />
+                      <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: 13 }}>%</span>
+                    </div>
+                    <button onClick={() => removeDiscount(i)} style={{ width: 32, height: 36, background: 'rgba(239,68,68,.1)', color: '#DC2626', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconTrash size={13} />
+                    </button>
+                  </div>
+                ))}
+                {settings.discounts.length === 0 && (
+                  <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>Henüz iskonto kademesi eklenmedi</div>
+                )}
+                <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 8, fontSize: 12, color: 'var(--text-3)' }}>
+                  <strong style={{ color: 'var(--text-2)' }}>Mevcut kademeler:</strong>{' '}
+                  {settings.discounts.length > 0
+                    ? settings.discounts.map(t => `${t.qty}+ adet → %${t.rate}`).join(', ')
+                    : '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── OPSİYONLAR ── */}
+        {tab === 'opsiyon' && (
+          <div style={{ maxWidth: 560 }}>
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">Opsiyonlar</div>
+                <button className="btn btn-secondary btn-sm" onClick={addOption}>
+                  <IconPlus size={14} /> Opsiyon Ekle
+                </button>
+              </div>
+              <div style={{ padding: '16px 18px' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 14 }}>
+                  Fiyat Sor ve tekliflerde ürünlere eklenebilecek opsiyonlar (nakış, baskı, özel ambalaj vb.)
+                </div>
+                {(settings.options || []).length === 0 && (
+                  <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
+                    Henüz opsiyon eklenmedi
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(settings.options || []).map(opt => (
+                    <div key={opt.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        className="form-input"
+                        placeholder="Opsiyon adı (örn: Nakış)"
+                        value={opt.name}
+                        onChange={e => updateOption(opt.id, 'name', e.target.value)}
+                        style={{ flex: 2 }}
+                      />
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input
+                          className="form-input"
+                          type="number"
+                          placeholder="Fiyat"
+                          value={opt.price || ''}
+                          onChange={e => updateOption(opt.id, 'price', parseFloat(e.target.value) || 0)}
+                          style={{ paddingRight: 28 }}
+                        />
+                        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: 13 }}>₺</span>
+                      </div>
+                      <button
+                        onClick={() => removeOption(opt.id)}
+                        style={{ width: 32, height: 36, background: 'rgba(239,68,68,.1)', color: '#DC2626', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      >
+                        <IconTrash size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
           <button className="btn btn-primary" onClick={save} disabled={saving} style={{ minWidth: 140 }}>
