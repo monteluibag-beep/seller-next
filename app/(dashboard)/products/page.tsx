@@ -5,11 +5,11 @@ import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Product, Category, ProductVariant, ProductOption, MainSettings } from '@/types';
+import type { Product, Category, ProductVariant, ProductOption, MainSettings, DiscountTier } from '@/types';
 import { getDoc } from 'firebase/firestore';
 import {
   IconPlus, IconSearch, IconEdit, IconTrash, IconPhoto, IconCamera, IconX, IconRefresh,
-  IconDownload, IconScan, IconCopy, IconUpload, IconTemplate, IconChevronDown,
+  IconDownload, IconScan, IconCopy, IconUpload, IconTemplate, IconChevronDown, IconEye, IconEyeOff,
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useRates } from '@/hooks/useRates';
@@ -212,7 +212,9 @@ function ProductsPageInner() {
   const [hoverImg, setHoverImg] = useState<{ src: string; x: number; y: number } | null>(null);
   // Global opsiyonlar (settings'ten)
   const [globalOptions, setGlobalOptions] = useState<ProductOption[]>([]);
+  const [discountTiers, setDiscountTiers] = useState<DiscountTier[]>([]);
   const [productOptsOpen, setProductOptsOpen] = useState(false);
+  const [showCost, setShowCost] = useState(false);
   // Inline hücre düzenleme
   const [inlineEdit, setInlineEdit] = useState<IE | null>(null);
   // Varyantlar
@@ -232,6 +234,14 @@ function ProductsPageInner() {
   const usdRate = rates.USD || 1;
 
   // Ürünün TL maliyetini hesapla (costUsd varsa kur ile çevir)
+  function wholesaleAt100(listPrice: number): number | null {
+    if (!listPrice || discountTiers.length === 0) return null;
+    const sorted = [...discountTiers].sort((a, b) => b.qty - a.qty);
+    const tier = sorted.find(t => t.qty <= 100);
+    if (!tier) return null;
+    return listPrice * (1 - tier.rate / 100);
+  }
+
   function effectiveCost(p: Product): number {
     if (p.cost && p.cost > 0) return p.cost;
     if (p.costUsd && p.costUsd > 0) return p.costUsd * usdRate;
@@ -268,6 +278,7 @@ function ProductsPageInner() {
       if (snap.exists()) {
         const s = snap.data() as MainSettings;
         if (Array.isArray(s.options)) setGlobalOptions(s.options);
+        if (Array.isArray(s.discounts)) setDiscountTiers(s.discounts);
       }
     } catch {}
   }
@@ -912,7 +923,17 @@ function ProductsPageInner() {
                         style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--or)' }} />
                     </th>
                     <th>Foto</th><th>Ürün Adı</th><th>Kod</th><th>Barkod</th>
-                    <th>Kategori</th><th>Maliyet</th><th>Liste</th><th>Stok</th><th></th>
+                    <th>Kategori</th>
+                    <th>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        Maliyet
+                        <button onClick={() => setShowCost(v => !v)} title={showCost ? 'Gizle' : 'Göster'}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: showCost ? 'var(--or)' : 'var(--text-3)', display: 'flex', alignItems: 'center' }}>
+                          {showCost ? <IconEye size={13} /> : <IconEyeOff size={13} />}
+                        </button>
+                      </div>
+                    </th>
+                    <th>Liste / Toptan</th><th>Stok</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -946,17 +967,24 @@ function ProductsPageInner() {
                       <td>{p.code ? <code style={{ background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 4, fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{p.code}</code> : <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                       <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{p.barcode || '—'}</td>
                       <td>{p.catName ? <span className="badge badge-blue">{p.catName}</span> : '—'}</td>
-                      {/* Maliyet — inline edit */}
-                      <InlineCell pid={p.id!} field="costUsd" ie={inlineEdit} onStart={e => startInline(e, p, 'costUsd')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit}>
-                        {p.costUsd && p.costUsd > 0 ? (
-                          <span title="Tıkla ve düzenle" style={{ borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>
-                            ₺{effectiveCost(p).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}<span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 4 }}>(${p.costUsd})</span>
-                          </span>
-                        ) : <span style={{ color: 'var(--text-3)', borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>—</span>}
-                      </InlineCell>
-                      {/* Liste Fiyatı — inline edit */}
+                      {/* Maliyet — inline edit, gizlenebilir */}
+                      {showCost ? (
+                        <InlineCell pid={p.id!} field="costUsd" ie={inlineEdit} onStart={e => startInline(e, p, 'costUsd')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit}>
+                          {p.costUsd && p.costUsd > 0 ? (
+                            <span title="Tıkla ve düzenle" style={{ borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>
+                              ₺{effectiveCost(p).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}<span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 4 }}>(${p.costUsd})</span>
+                            </span>
+                          ) : <span style={{ color: 'var(--text-3)', borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>—</span>}
+                        </InlineCell>
+                      ) : (
+                        <td><span style={{ fontSize: 12, color: 'var(--text-3)' }}>••••</span></td>
+                      )}
+                      {/* Liste + Toptan */}
                       <InlineCell pid={p.id!} field="list" ie={inlineEdit} onStart={e => startInline(e, p, 'list')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} fw>
-                        <span title="Tıkla ve düzenle" style={{ borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <span title="Tıkla ve düzenle" style={{ borderBottom: '1px dashed var(--border-2)', cursor: 'text' }}>₺{(p.list ?? 0).toLocaleString('tr-TR')}</span>
+                          {(() => { const w = wholesaleAt100(p.list); return w ? <span style={{ fontSize: 10, color: '#34d399', fontWeight: 600 }}>₺{Math.round(w).toLocaleString('tr-TR')} toptan</span> : null; })()}
+                        </div>
                       </InlineCell>
                       {/* Stok — inline edit */}
                       <InlineCell pid={p.id!} field="stock" ie={inlineEdit} onStart={e => startInline(e, p, 'stock')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} w={64}>
@@ -997,12 +1025,15 @@ function ProductsPageInner() {
                     {p.catName && <span className="badge badge-blue" style={{ fontSize: 10 }}>{p.catName}</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                    <MobInline pid={p.id!} field="costUsd" ie={inlineEdit} onStart={e => startInline(e, p, 'costUsd')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} label="$" w={64}>
-                      {p.costUsd ? `$${p.costUsd}` : '—'}
-                    </MobInline>
+                    {showCost && (
+                      <MobInline pid={p.id!} field="costUsd" ie={inlineEdit} onStart={e => startInline(e, p, 'costUsd')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} label="$" w={64}>
+                        {p.costUsd ? `$${p.costUsd}` : '—'}
+                      </MobInline>
+                    )}
                     <MobInline pid={p.id!} field="list" ie={inlineEdit} onStart={e => startInline(e, p, 'list')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} label="Liste" w={72}>
                       ₺{(p.list ?? 0).toLocaleString('tr-TR')}
                     </MobInline>
+                    {(() => { const w = wholesaleAt100(p.list); return w ? <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>₺{Math.round(w).toLocaleString('tr-TR')} T</span> : null; })()}
                     <MobInline pid={p.id!} field="stock" ie={inlineEdit} onStart={e => startInline(e, p, 'stock')} onSave={saveInline} onCancel={() => setInlineEdit(null)} onChange={setInlineEdit} label="Stok" w={52} color={p.stock <= 5 ? '#F87171' : p.stock <= 15 ? '#FCD34D' : '#4ADE80'}>
                       {p.stock}
                     </MobInline>
