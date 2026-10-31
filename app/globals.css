@@ -519,3 +519,39 @@ input[type="number"]::-webkit-outer-spin-button { opacity: .4; }
   .bottom-nav { display: none !important; }
   .sidebar { display: flex !important; }
 }
+
+/* Ürün listesi resim — büyük thumbnail + hover popup */
+.prod-img-wrap {
+  position: relative;
+  display: inline-block;
+}
+.prod-img-thumb {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: block;
+}
+.prod-img-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.prod-img-hover {
+  display: none;
+  position: absolute;
+  left: 120px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 999;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  pointer-events: none;
+}
+.prod-img-wrap:hover .prod-img-hover {
+  display: block;
+}

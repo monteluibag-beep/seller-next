@@ -909,10 +909,17 @@ function ProductsPageInner() {
                           style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--or)' }} />
                       </td>
                       <td>
-                        {p.photo
-                          ? <img src={p.photo} alt={p.name} style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: '#fff' }} />
-                          : <div style={{ width: 56, height: 56, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconPhoto size={22} color="var(--text-3)" /></div>
-                        }
+                        <div className="prod-img-wrap">
+                          {p.photo
+                            ? <img src={p.photo} alt={p.name} className="prod-img-thumb" />
+                            : <div className="prod-img-thumb prod-img-empty"><IconPhoto size={28} color="var(--text-3)" /></div>
+                          }
+                          {p.photo && (
+                            <div className="prod-img-hover">
+                              <img src={p.photo} alt={p.name} style={{ width: 280, height: 280, objectFit: 'contain' }} />
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td style={{ fontWeight: 600 }}>
                         {p.name}
