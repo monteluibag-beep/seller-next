@@ -28,6 +28,7 @@ function generateCatalogHtml(
   currency: Currency,
   qty: number,
   rates: { USD: number; EUR: number },
+  photoCache: Record<string, string> = {},
 ): string {
   const currSymbol = currency === 'TRY' ? '₺' : currency === 'USD' ? '$' : '€';
   const rate = currency === 'TRY' ? 1 : rates[currency];
@@ -65,19 +66,19 @@ function generateCatalogHtml(
       const catLabel = chunks.length > 1 ? `${esc(cat)} (${chunkIdx + 1}/${chunks.length})` : esc(cat);
 
       const productCards = chunk.map(p => `
-        <div style="background:#fff;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#fff;height:140px;display:flex;align-items:center;justify-content:center;padding:8px;">
+        <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#fafafa;height:120px;display:flex;align-items:center;justify-content:center;padding:6px;border-bottom:1px solid #f0f0f0;">
             ${p.photo
-              ? `<img src="${esc(p.photo)}" alt="${esc(p.name)}" style="max-height:140px;max-width:100%;object-fit:contain;">`
-              : `<div style="width:64px;height:64px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              ? `<img src="${esc(photoCache[p.photo] || p.photo)}" alt="${esc(p.name)}" style="max-height:116px;max-width:100%;object-fit:contain;">`
+              : `<div style="width:52px;height:52px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                  </div>`
             }
           </div>
-          <div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:5px;">
-            <div style="font-size:12px;font-weight:700;color:#111;line-height:1.3;">${esc(p.name)}</div>
-            ${showCode && p.code ? `<div style="font-size:10px;color:#6b7280;font-family:monospace;background:#f3f4f6;padding:2px 6px;border-radius:4px;display:inline-block;width:fit-content;">${esc(p.code)}</div>` : ''}
-            ${showPrice && p.list ? `<div style="font-size:12px;font-weight:800;color:#E85D04;margin-top:auto;">${fmtPrice(p.list)}</div>` : ''}
+          <div style="padding:8px 10px;flex:1;display:flex;flex-direction:column;gap:4px;">
+            <div style="font-size:11px;font-weight:700;color:#111;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(p.name)}</div>
+            ${showCode && p.code ? `<div style="font-size:9px;color:#6b7280;font-family:monospace;background:#f3f4f6;padding:1px 5px;border-radius:3px;display:inline-block;width:fit-content;">${esc(p.code)}</div>` : ''}
+            ${showPrice && p.list ? `<div style="font-size:11px;font-weight:800;color:#E85D04;margin-top:auto;padding-top:3px;">${fmtPrice(p.list)}</div>` : ''}
           </div>
         </div>
       `).join('');
@@ -97,8 +98,8 @@ function generateCatalogHtml(
           </div>
 
           <!-- Ürün grid -->
-          <div style="padding:12px 36px;">
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+          <div style="padding:10px 36px 50px;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
               ${productCards}
             </div>
           </div>
@@ -346,7 +347,24 @@ export default function CatalogPage() {
         const allSelected = catProds.every(p => selectedProducts.has(p.id!));
         filteredByCat[c] = allSelected ? catProds : catProds.filter(p => selectedProducts.has(p.id!));
       });
-      const html = generateCatalogHtml(orderedCats, filteredByCat, firm, showPrice, showCode, currency, qty, rates);
+      // Tüm ürün fotoğraflarını base64'e çevir (blob URL'de CORS hatası olmasın)
+      const photoCache: Record<string, string> = {};
+      const allPhotoUrls = [...new Set(
+        orderedCats.flatMap(c => (filteredByCat[c] || []).map(p => p.photo).filter((u): u is string => !!u))
+      )];
+      await Promise.allSettled(allPhotoUrls.map(async url => {
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          photoCache[url] = await new Promise<string>(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target?.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch {}
+      }));
+
+      const html = generateCatalogHtml(orderedCats, filteredByCat, firm, showPrice, showCode, currency, qty, rates, photoCache);
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const w = window.open(url, '_blank', 'width=1000,height=800');
