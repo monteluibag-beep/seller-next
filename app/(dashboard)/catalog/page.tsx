@@ -141,6 +141,11 @@ function generateCatalogHtml(
     display: flex;
     flex-direction: column;
   }
+  .cover-page {
+    position: relative;
+    height: 277mm;
+    overflow: hidden;
+  }
   .cat-page {
     position: relative;
     height: 277mm;
@@ -149,6 +154,7 @@ function generateCatalogHtml(
   @media print {
     html, body { width: 794px; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cover-page { height: 100vh; }
     .cat-page { height: 100vh; }
   }
 </style>
@@ -156,7 +162,7 @@ function generateCatalogHtml(
 <body>
 
 <!-- KAPAK SAYFASI -->
-<div class="page" style="position:relative;">
+<div class="page cover-page">
 
   <!-- Arka plan çanta ikonları ızgarası -->
   <div style="position:absolute;inset:0;z-index:0;opacity:.22;display:grid;grid-template-columns:repeat(10,1fr);align-content:start;gap:0;">
@@ -178,7 +184,7 @@ function generateCatalogHtml(
   <!-- Radyal gradient — arka planı soldurur, içerik okunabilir kalır -->
   <div style="position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.88) 20%, rgba(255,255,255,.60) 55%, rgba(255,255,255,.20) 100%);"></div>
 
-  <div style="position:relative;z-index:2;min-height:257mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 60px;">
+  <div style="position:relative;z-index:2;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 60px;box-sizing:border-box;">
 
     ${firm.logoDataUrl
       ? `<div style="margin-bottom:32px;"><img src="${firm.logoDataUrl}" alt="${esc(firm.name)}" style="height:56px;object-fit:contain;"></div>`
@@ -219,7 +225,6 @@ function generateCatalogHtml(
       <span style="font-size:11px;color:#aaa;font-weight:500;">${new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })}</span>
     </div>
   </div>
-</div>
 </div>
 
 ${categoryPages}
