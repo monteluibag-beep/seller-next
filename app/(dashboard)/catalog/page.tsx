@@ -66,7 +66,7 @@ function generateCatalogHtml(
       const catLabel = chunks.length > 1 ? `${esc(cat)} (${chunkIdx + 1}/${chunks.length})` : esc(cat);
 
       const productCards = chunk.map(p => `
-        <div style="background:#fff;border-radius:7px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#fff;border-radius:7px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;height:100%;">
           <div style="background:#fafafa;flex:0 0 62%;display:flex;align-items:center;justify-content:center;padding:6px;border-bottom:1px solid #f0f0f0;overflow:hidden;">
             ${p.photo
               ? `<img src="${esc(photoCache[p.photo] || p.photo)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:contain;">`
