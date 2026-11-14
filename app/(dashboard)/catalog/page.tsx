@@ -67,9 +67,9 @@ function generateCatalogHtml(
 
       const productCards = chunk.map(p => `
         <div style="background:#fff;border-radius:7px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#fafafa;height:88px;display:flex;align-items:center;justify-content:center;padding:5px;border-bottom:1px solid #f0f0f0;">
+          <div style="background:#fafafa;flex:1;min-height:60px;display:flex;align-items:center;justify-content:center;padding:5px;border-bottom:1px solid #f0f0f0;">
             ${p.photo
-              ? `<img src="${esc(photoCache[p.photo] || p.photo)}" alt="${esc(p.name)}" style="max-height:84px;max-width:100%;object-fit:contain;">`
+              ? `<img src="${esc(photoCache[p.photo] || p.photo)}" alt="${esc(p.name)}" style="max-height:100%;max-width:100%;width:auto;height:auto;object-fit:contain;">`
               : `<div style="width:40px;height:40px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                  </div>`
@@ -98,8 +98,8 @@ function generateCatalogHtml(
           </div>
 
           <!-- Ürün grid -->
-          <div style="padding:8px 36px 50px;">
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+          <div style="padding:8px 36px 48px;flex:1;display:flex;flex-direction:column;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,1fr);gap:6px;flex:1;">
               ${productCards}
             </div>
           </div>
@@ -150,6 +150,8 @@ function generateCatalogHtml(
     position: relative;
     height: 277mm;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   @media print {
     html, body { width: 794px; }
