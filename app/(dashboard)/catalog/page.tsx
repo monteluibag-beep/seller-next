@@ -67,18 +67,20 @@ function generateCatalogHtml(
 
       const productCards = chunk.map(p => `
         <div style="background:#fff;border-radius:7px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#fafafa;flex:1;min-height:60px;display:flex;align-items:center;justify-content:center;padding:5px;border-bottom:1px solid #f0f0f0;">
+          <div style="background:#fafafa;flex:0 0 62%;display:flex;align-items:center;justify-content:center;padding:6px;border-bottom:1px solid #f0f0f0;overflow:hidden;">
             ${p.photo
-              ? `<img src="${esc(photoCache[p.photo] || p.photo)}" alt="${esc(p.name)}" style="max-height:100%;max-width:100%;width:auto;height:auto;object-fit:contain;">`
+              ? `<img src="${esc(photoCache[p.photo] || p.photo)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:contain;">`
               : `<div style="width:40px;height:40px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                  </div>`
             }
           </div>
-          <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;gap:3px;">
-            <div style="font-size:10px;font-weight:700;color:#111;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(p.name)}</div>
-            ${showCode && p.code ? `<div style="font-size:9px;color:#6b7280;font-family:monospace;background:#f3f4f6;padding:1px 4px;border-radius:3px;display:inline-block;width:fit-content;">${esc(p.code)}</div>` : ''}
-            ${showPrice && p.list ? `<div style="font-size:10px;font-weight:800;color:#E85D04;margin-top:auto;padding-top:2px;">${fmtPrice(p.list)}</div>` : ''}
+          <div style="flex:0 0 38%;padding:6px 8px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;">
+            <div>
+              <div style="font-size:10px;font-weight:700;color:#111;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(p.name)}</div>
+              ${showCode && p.code ? `<div style="font-size:9px;color:#6b7280;font-family:monospace;background:#f3f4f6;padding:1px 4px;border-radius:3px;display:inline-block;width:fit-content;margin-top:3px;">${esc(p.code)}</div>` : ''}
+            </div>
+            ${showPrice && p.list ? `<div style="font-size:10px;font-weight:800;color:#E85D04;">${fmtPrice(p.list)}</div>` : ''}
           </div>
         </div>
       `).join('');
