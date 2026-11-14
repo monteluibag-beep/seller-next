@@ -66,21 +66,21 @@ function generateCatalogHtml(
       const catLabel = chunks.length > 1 ? `${esc(cat)} (${chunkIdx + 1}/${chunks.length})` : esc(cat);
 
       const productCards = chunk.map(p => `
-        <div style="background:#fff;border-radius:7px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;height:100%;">
-          <div style="background:#fafafa;height:95px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:5px;border-bottom:1px solid #f0f0f0;">
+        <div style="background:#fff;border-radius:6px;border:1px solid #e5e7eb;overflow:hidden;display:flex;flex-direction:column;height:100%;">
+          <!-- Fotoğraf: sabit 135px -->
+          <div style="flex-shrink:0;height:135px;background:#fafafa;display:flex;align-items:center;justify-content:center;padding:6px;border-bottom:1px solid #efefef;">
             ${p.photo
-              ? `<img src="${esc(photoCache[p.photo] || p.photo)}" alt="${esc(p.name)}" style="max-width:100%;max-height:85px;object-fit:contain;">`
-              : `<div style="width:40px;height:40px;background:#e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                 </div>`
+              ? `<img src="${esc(photoCache[p.photo] || p.photo)}" alt="${esc(p.name)}" style="max-width:100%;max-height:123px;object-fit:contain;display:block;">`
+              : `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`
             }
           </div>
-          <div style="flex:1;padding:5px 8px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;min-height:0;">
-            <div>
-              <div style="font-size:10px;font-weight:700;color:#111;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(p.name)}</div>
-              ${showCode && p.code ? `<div style="font-size:9px;color:#6b7280;font-family:monospace;background:#f3f4f6;padding:1px 4px;border-radius:3px;display:inline-block;width:fit-content;margin-top:2px;">${esc(p.code)}</div>` : ''}
+          <!-- Metin: kalan yüksekliği doldurur -->
+          <div style="flex:1;min-height:0;padding:7px 9px;display:flex;flex-direction:column;justify-content:space-between;background:#fff;">
+            <div style="overflow:hidden;">
+              <div style="font-size:10.5px;font-weight:700;color:#111;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(p.name)}</div>
+              ${showCode && p.code ? `<div style="font-size:9px;color:#9ca3af;font-family:monospace;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.code)}</div>` : ''}
             </div>
-            ${showPrice && p.list ? `<div style="font-size:10px;font-weight:800;color:#E85D04;padding-top:2px;">${fmtPrice(p.list)}</div>` : ''}
+            ${showPrice && p.list ? `<div style="font-size:11px;font-weight:800;color:#E85D04;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${fmtPrice(p.list)}</div>` : ''}
           </div>
         </div>
       `).join('');
@@ -89,24 +89,26 @@ function generateCatalogHtml(
         <!-- KATEGORİ SAYFASI: ${esc(cat)} sayfa ${chunkIdx + 1} -->
         <div class="page cat-page">
 
-          <!-- Sayfa başlığı -->
-          <div style="padding:20px 36px 12px;border-bottom:3px solid #E85D04;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <div style="font-size:10px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;">Ürün Kataloğu</div>
-              ${isFirstChunk ? logoHtml : `<div style="font-size:11px;color:#9ca3af;">${catLabel}</div>`}
+          <!-- Sayfa başlığı: sabit 68px yükseklik -->
+          <div style="height:68px;flex-shrink:0;padding:0 36px;border-bottom:3px solid #E85D04;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;">
+            <div>
+              <div style="font-size:9px;font-weight:700;color:#E85D04;text-transform:uppercase;letter-spacing:2px;margin-bottom:3px;">Ürün Kataloğu</div>
+              <div style="font-size:17px;font-weight:900;color:#111;line-height:1;">${esc(cat)}${chunks.length > 1 ? ` <span style="font-size:11px;font-weight:500;color:#9ca3af;">(${chunkIdx+1}/${chunks.length})</span>` : ''}</div>
             </div>
-            ${isFirstChunk ? `<div style="font-size:20px;font-weight:900;color:#111;letter-spacing:-0.5px;line-height:1.1;">${esc(cat)}</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:2px;">${prods.length} ürün</div>` : ''}
+            <div style="display:flex;align-items:center;gap:12px;">
+              ${isFirstChunk ? `<span style="font-size:10px;color:#9ca3af;">${prods.length} ürün</span>` : ''}
+              ${logoHtml}
+            </div>
           </div>
 
-          <!-- Ürün grid -->
-          <div style="padding:8px 36px 48px;flex:1;display:flex;flex-direction:column;">
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,1fr);gap:6px;flex:1;">
+          <!-- Ürün grid: explicit yükseklik = 277mm - 68px header - 10px üst pad - 48px alt pad -->
+          <div style="padding:10px 36px 48px;box-sizing:border-box;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,minmax(0,1fr));gap:8px;height:calc(277mm - 126px);">
               ${productCards}
             </div>
           </div>
 
-          <!-- Alt bilgi — position:absolute ile sayfanın dibine sabitlendi -->
+          <!-- Alt bilgi -->
           <div style="position:absolute;bottom:0;left:0;right:0;height:40px;padding:0 36px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff;">
             <div style="font-size:10px;color:#c0bdb8;letter-spacing:.3px;">${esc(firm.name)}${firm.phone ? ' · ' + esc(firm.phone) : ''}</div>
             <div style="display:flex;align-items:center;gap:8px;">
