@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   collection, getDocs, addDoc, serverTimestamp, query, orderBy,
   doc, updateDoc, increment, writeBatch,
@@ -30,8 +30,10 @@ interface ImportRow {
 
 function StockPageInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [moves, setMoves] = useState<StockMove[]>([]);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
@@ -60,6 +62,7 @@ function StockPageInner() {
   // Product search for add-move modal
   const [productSearch, setProductSearch] = useState('');
   const [lowStockOpen, setLowStockOpen] = useState(false);
+  const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
 
   useEffect(() => { load(); loadProducts(); }, []);
 
@@ -665,12 +668,19 @@ function StockPageInner() {
               )}
 
               {selectedProduct && (
-                <div style={{ marginTop: 8, background: 'rgba(232,93,4,.08)', border: '1px solid rgba(232,93,4,.2)', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
-                  <span style={{ color: 'var(--or)', fontWeight: 600 }}>{selectedProduct.name}</span>
-                  <span style={{ color: 'var(--text-3)', marginLeft: 8 }}>Mevcut stok: <strong style={{ color: 'var(--text-1)' }}>{selectedProduct.stock} adet</strong></span>
-                  {form.type === 'out' && form.qty > selectedProduct.stock && (
-                    <span style={{ color: '#DC2626', marginLeft: 8 }}>⚠ Stok yetersiz!</span>
-                  )}
+                <div style={{ marginTop: 8, background: 'rgba(232,93,4,.08)', border: '1px solid rgba(232,93,4,.2)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {selectedProduct.photo
+                    ? <img src={selectedProduct.photo} alt="" style={{ width: 52, height: 52, objectFit: 'contain', borderRadius: 8, background: '#fff', flexShrink: 0 }} />
+                    : <div style={{ width: 52, height: 52, background: 'var(--surface-3)', borderRadius: 8, flexShrink: 0 }} />
+                  }
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: 'var(--or)', fontWeight: 700, fontSize: 14 }}>{selectedProduct.name}</div>
+                    {selectedProduct.code && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{selectedProduct.code}</div>}
+                    <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>Mevcut stok: <strong style={{ color: 'var(--text-1)' }}>{selectedProduct.stock} adet</strong></div>
+                    {form.type === 'out' && form.qty > selectedProduct.stock && (
+                      <div style={{ color: '#DC2626', fontSize: 12, marginTop: 2 }}>⚠ Stok yetersiz!</div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -812,12 +822,40 @@ function StockPageInner() {
       {scanOpen && (
         <BarcodeScanner
           onDetect={val => {
-            setProductSearch(val);
-            setForm(f => ({ ...f, productId: '' }));
             setScanOpen(false);
+            const found = products.find(p => p.barcode === val);
+            if (found) {
+              setForm(f => ({ ...f, productId: found.id! }));
+              setProductSearch(found.name);
+              setNotFoundBarcode(null);
+            } else {
+              setNotFoundBarcode(val);
+              setProductSearch(val);
+              setForm(f => ({ ...f, productId: '' }));
+            }
           }}
           onClose={() => setScanOpen(false)}
         />
+      )}
+
+      {/* Barkod bulunamadı uyarısı */}
+      {notFoundBarcode && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setNotFoundBarcode(null)}>
+          <div className="modal-box" style={{ maxWidth: 380, textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Ürün Bulunamadı</div>
+            <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 6 }}>
+              <code style={{ background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 6 }}>{notFoundBarcode}</code>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 20 }}>Bu barkoda ait ürün sistemde kayıtlı değil. Yeni ürün olarak eklemek ister misin?</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setNotFoundBarcode(null)}>İptal</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { setNotFoundBarcode(null); setOpen(false); router.push('/products?barcode=' + encodeURIComponent(notFoundBarcode)); }}>
+                Ürünü Ekle
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

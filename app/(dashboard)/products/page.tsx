@@ -181,6 +181,7 @@ function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label,
 
 function ProductsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -256,6 +257,12 @@ function ProductsPageInner() {
   }
 
   useEffect(() => { load(); loadCats(); loadGlobalOptions(); }, []);
+
+  useEffect(() => {
+    const barcode = searchParams.get('barcode');
+    if (barcode && products.length > 0) openAdd(barcode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, products.length]);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 150);
