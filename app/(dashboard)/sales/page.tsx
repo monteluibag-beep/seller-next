@@ -177,6 +177,226 @@ export default function SalesPage() {
 
   const detailSale = sales.find(s => s.id === detailId);
 
+  async function openIrsaliyePDF(sale: Sale) {
+    let firmName = '', firmAddress = '', firmPhone = '', firmEmail = '', firmTaxNo = '';
+    try {
+      const { getDoc, doc: fDoc } = await import('firebase/firestore');
+      const snap = await getDoc(fDoc(db, 'settings', 'main'));
+      if (snap.exists()) {
+        const d = snap.data();
+        firmName    = d.firmName    || '';
+        firmAddress = d.firmAddress || '';
+        firmPhone   = d.firmPhone   || '';
+        firmEmail   = d.firmEmail   || '';
+        firmTaxNo   = d.firmTaxNo   || '';
+      }
+    } catch {}
+
+    const irsNo   = 'İRS-' + (sale.id || '').slice(-8).toUpperCase();
+    const saleNo  = '#' + (sale.id || '').slice(-6).toUpperCase();
+    const dateStr = formatDate(sale.date);
+    const now     = new Date();
+    const printDate = now.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    const totalQtyDoc = sale.items.reduce((s, i) => s + i.qty, 0);
+
+    const rows = sale.items.map((item, idx) => {
+      const p = products.find(x => x.id === item.productId);
+      const barcode = p?.barcode || '';
+      const code    = p?.code    || '';
+      return `
+      <tr>
+        <td style="text-align:center;color:#666;font-size:11px">${idx + 1}</td>
+        <td>
+          <div style="font-weight:600;font-size:13px">${item.name}</div>
+          ${code ? `<div style="font-size:10px;color:#888;margin-top:1px">Kod: ${code}</div>` : ''}
+          ${barcode ? `<div style="font-size:10px;color:#888;font-family:monospace">Barkod: ${barcode}</div>` : ''}
+        </td>
+        <td style="text-align:center;font-weight:700;font-size:15px">${item.qty}</td>
+        <td style="text-align:center">
+          <div style="display:inline-block;width:36px;height:36px;border:2px solid #ddd;border-radius:4px;"></div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<title>Sevk İrsaliyesi ${irsNo}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; background: #fff; }
+  .page { width: 210mm; min-height: 297mm; padding: 14mm 16mm 20mm; margin: 0 auto; position: relative; }
+
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 3px solid #1a1a2e; margin-bottom: 18px; }
+  .header-left {}
+  .firm-name { font-size: 20px; font-weight: 900; color: #1a1a2e; letter-spacing: -.3px; }
+  .firm-sub  { font-size: 11px; color: #555; margin-top: 3px; line-height: 1.6; }
+  .doc-badge { text-align: right; }
+  .doc-type  { font-size: 22px; font-weight: 900; color: #E85D04; letter-spacing: 1px; text-transform: uppercase; }
+  .doc-no    { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-top: 4px; }
+  .doc-date  { font-size: 11px; color: #666; margin-top: 2px; }
+
+  /* Info boxes */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .info-box  { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; background: #fafafa; }
+  .info-box-title { font-size: 9px; font-weight: 700; color: #E85D04; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
+  .info-box-val   { font-size: 12px; font-weight: 600; color: #1a1a2e; line-height: 1.5; }
+
+  /* Warning strip */
+  .strip { background: #1a1a2e; color: #fff; padding: 7px 14px; border-radius: 6px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
+  .strip-left  { font-size: 12px; font-weight: 700; }
+  .strip-right { font-size: 11px; color: #aaa; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  thead tr { background: #1a1a2e; }
+  th { color: #fff; padding: 9px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+  th:first-child { width: 32px; text-align: center; }
+  td { padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  tr:nth-child(even) td { background: #f8f8f8; }
+  .col-qty   { width: 60px; text-align: center; }
+  .col-check { width: 70px; text-align: center; }
+  .total-strip { background: #f0f0f0; border-top: 2px solid #1a1a2e; }
+  .total-strip td { font-weight: 700; font-size: 13px; padding: 10px 12px; }
+
+  /* Signatures */
+  .sig-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 28px; }
+  .sig-box { border: 1px solid #ccc; border-radius: 6px; padding: 10px 12px; }
+  .sig-box-title { font-size: 9px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 40px; }
+  .sig-line { border-top: 1px solid #aaa; padding-top: 6px; font-size: 10px; color: #888; }
+
+  /* Note */
+  .note-box { border: 1px dashed #ccc; border-radius: 6px; padding: 10px 14px; margin-top: 20px; }
+  .note-label { font-size: 9px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 6px; }
+  .note-lines { display: flex; flex-direction: column; gap: 8px; }
+  .note-line { border-bottom: 1px solid #eee; height: 18px; }
+
+  /* Footer */
+  .footer { position: absolute; bottom: 10mm; left: 16mm; right: 16mm; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd; padding-top: 8px; }
+  .footer-left  { font-size: 10px; color: #888; }
+  .footer-right { font-size: 10px; color: #888; }
+  .orange { color: #E85D04; }
+
+  /* Validity notice */
+  .validity { text-align: center; margin-top: 18px; font-size: 10px; color: #999; font-style: italic; }
+
+  @media print {
+    body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .page { padding: 10mm 14mm 18mm; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="/logo.png" alt="" style="height:52px;object-fit:contain" onerror="this.style.display='none'" />
+        <div>
+          <div class="firm-name">${firmName || 'FİRMA ADI'}</div>
+          <div class="firm-sub">
+            ${firmAddress ? firmAddress + '<br>' : ''}
+            ${firmPhone   ? '☎ ' + firmPhone + '&nbsp;&nbsp;' : ''}
+            ${firmEmail   ? '✉ ' + firmEmail : ''}
+            ${firmTaxNo   ? '<br>VKN: ' + firmTaxNo : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="doc-badge">
+      <div class="doc-type">SEVKİYAT<br>İRSALİYESİ</div>
+      <div class="doc-no">${irsNo}</div>
+      <div class="doc-date">Tarih: ${dateStr}</div>
+    </div>
+  </div>
+
+  <!-- Info boxes -->
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="info-box-title">🏢 Alıcı / Müşteri</div>
+      <div class="info-box-val">${sale.customer}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-title">📋 Satış Referansı</div>
+      <div class="info-box-val">${saleNo}<br><span style="font-size:11px;font-weight:400;color:#666">Hazırlayan: ${sale.by || '—'}</span></div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-title">📦 Toplam Kalem / Adet</div>
+      <div class="info-box-val">${sale.items.length} kalem<br><span style="font-size:18px;font-weight:900;color:#E85D04">${totalQtyDoc} adet</span></div>
+    </div>
+  </div>
+
+  <!-- Strip -->
+  <div class="strip">
+    <div class="strip-left">⚠ DEPOCU: Her ürünü kontrol edin, adet kutucuğunu işaretleyin, imzalayın.</div>
+    <div class="strip-right">Çıktı: ${printDate}</div>
+  </div>
+
+  <!-- Table -->
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Ürün Adı / Kodu</th>
+        <th class="col-qty">Adet</th>
+        <th class="col-check">✓ Kontrol</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+      <tr class="total-strip">
+        <td></td>
+        <td style="text-align:right;font-size:12px">TOPLAM</td>
+        <td style="text-align:center;font-size:16px;color:#E85D04">${totalQtyDoc}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Note box -->
+  <div class="note-box">
+    <div class="note-label">📝 Notlar / Özel Talimatlar</div>
+    ${sale.note ? `<div style="font-size:12px;font-weight:600;margin-bottom:6px">${sale.note}</div>` : ''}
+    <div class="note-lines"><div class="note-line"></div><div class="note-line"></div></div>
+  </div>
+
+  <!-- Signatures -->
+  <div class="sig-section">
+    <div class="sig-box">
+      <div class="sig-box-title">📤 Sevk Eden (Depocu)</div>
+      <div class="sig-line">Ad Soyad / İmza</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-box-title">🚚 Taşıyıcı / Kurye</div>
+      <div class="sig-line">Ad Soyad / İmza</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-box-title">📥 Teslim Alan</div>
+      <div class="sig-line">Ad Soyad / İmza</div>
+    </div>
+  </div>
+
+  <div class="validity">Bu belge resmi irsaliye yerine geçmez. Muhasebe kaydı için fatura ile birlikte kullanınız.</div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left"><span class="orange">${firmName}</span> · Sevkiyat İrsaliyesi · ${irsNo}</div>
+    <div class="footer-right">Çıktı: ${printDate}</div>
+  </div>
+
+</div>
+<script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  }
+
   async function openSalePDF(sale: Sale) {
     let firmName = '', firmAddress = '', firmPhone = '', firmEmail = '', bankInfo = '';
     try {
@@ -356,7 +576,8 @@ export default function SalesPage() {
                       <td>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           <button className="btn btn-secondary btn-sm" onClick={() => setDetailId(s.id!)}>Detay</button>
-                          <button className="btn btn-secondary btn-sm" onClick={() => openSalePDF(s)} title="PDF İndir / Yazdır" style={{ color: '#E85D04' }}>PDF</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => openSalePDF(s)} title="Satış fişi PDF" style={{ color: '#E85D04' }}>PDF</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => openIrsaliyePDF(s)} title="Sevk irsaliyesi PDF" style={{ color: '#1a1a2e' }}>📦 İrsaliye</button>
                           {s.irsaliye === 'pending' && (
                             <button className="btn btn-primary btn-sm" onClick={() => { setIrsaliyeSale(s); setConfirmed({}); }} style={{ background: 'rgba(234,179,8,.2)', color: '#ca8a04', border: '1px solid rgba(234,179,8,.4)' }}>
                               <IconScan size={13} /> Sevki Onayla
@@ -682,10 +903,13 @@ export default function SalesPage() {
             <div style={{ textAlign: 'right', fontWeight: 800, fontSize: 18 }}>
               Toplam: ₺{detailSale.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
               <button className="btn btn-secondary" onClick={() => setDetailId(null)}>Kapat</button>
+              <button className="btn btn-secondary" onClick={() => openIrsaliyePDF(detailSale)} style={{ color: '#1a1a2e', border: '1px solid #ccc' }}>
+                📦 İrsaliye PDF
+              </button>
               <button className="btn btn-primary" onClick={() => openSalePDF(detailSale)} style={{ background: '#E85D04' }}>
-                İndir / Yazdır
+                Satış Fişi PDF
               </button>
             </div>
           </div>
