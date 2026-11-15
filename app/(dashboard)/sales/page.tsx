@@ -7,9 +7,10 @@ import {
 import { db } from '@/lib/firebase';
 import type { Sale, SaleItem, Product } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
-import { IconPlus, IconX, IconTrash, IconSearch, IconChevronDown } from '@tabler/icons-react';
+import { IconPlus, IconX, IconTrash, IconSearch, IconChevronDown, IconScan, IconCheck } from '@tabler/icons-react';
 import { useRates } from '@/hooks/useRates';
 import Pagination from '@/components/Pagination';
+import BarcodeScanner from '@/components/BarcodeScanner';
 
 type Currency = 'TRY' | 'USD' | 'EUR' | 'GBP';
 const CUR_SYMBOLS: Record<Currency, string> = { TRY: '₺', USD: '$', EUR: '€', GBP: '£' };
@@ -44,6 +45,12 @@ export default function SalesPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [salePage, setSalePage] = useState(1);
   const SALE_PAGE_SIZE = 20;
+  const [irsaliyeMode, setIrsaliyeMode] = useState(false);
+  // İrsaliye onay modalı
+  const [irsaliyeSale, setIrsaliyeSale] = useState<Sale | null>(null);
+  const [confirmed, setConfirmed] = useState<Record<string, boolean>>({}); // productId → confirmed
+  const [irsaliyeScanner, setIrsaliyeScanner] = useState(false);
+  const [irsaliyeSaving, setIrsaliyeSaving] = useState(false);
 
   // Kur: TRY → seçilen döviz
   const rate = currency === 'TRY' ? 1 : rates[currency as 'USD'|'EUR'|'GBP'];
@@ -111,16 +118,21 @@ export default function SalesPage() {
         customer, items, total, note,
         discountRate, currency, exchangeRate: rate,
         by: user?.email?.split('@')[0] || 'admin',
-        status: 'completed', date: serverTimestamp(),
+        status: 'completed',
+        irsaliye: irsaliyeMode ? 'pending' : 'none',
+        date: serverTimestamp(),
       });
-      for (const item of cart) {
-        const pid = item.productId;
-        await updateDoc(doc(db, 'products', pid), { stock: increment(-item.qty) });
-        await addDoc(collection(db, 'stock_moves'), {
-          productId: pid, productName: item.name,
-          type: 'out', qty: item.qty,
-          note: `Satış: ${customer}`, date: serverTimestamp(),
-        });
+      if (!irsaliyeMode) {
+        // Stoku hemen düş
+        for (const item of cart) {
+          const pid = item.productId;
+          await updateDoc(doc(db, 'products', pid), { stock: increment(-item.qty) });
+          await addDoc(collection(db, 'stock_moves'), {
+            productId: pid, productName: item.name,
+            type: 'out', qty: item.qty,
+            note: `Satış: ${customer}`, date: serverTimestamp(),
+          });
+        }
       }
       setOpen(false);
       resetForm();
@@ -131,8 +143,30 @@ export default function SalesPage() {
     }
   }
 
+  async function completeIrsaliye() {
+    if (!irsaliyeSale?.id) return;
+    setIrsaliyeSaving(true);
+    try {
+      for (const item of irsaliyeSale.items) {
+        await updateDoc(doc(db, 'products', item.productId), { stock: increment(-item.qty) });
+        await addDoc(collection(db, 'stock_moves'), {
+          productId: item.productId, productName: item.name,
+          type: 'out', qty: item.qty,
+          note: `Sevk irsaliyesi: ${irsaliyeSale.customer}`, date: serverTimestamp(),
+        });
+      }
+      await updateDoc(doc(db, 'sales', irsaliyeSale.id), { irsaliye: 'completed' });
+      setSales(prev => prev.map(s => s.id === irsaliyeSale.id ? { ...s, irsaliye: 'completed' } as Sale : s));
+      setIrsaliyeSale(null);
+      setConfirmed({});
+      loadProducts();
+    } finally {
+      setIrsaliyeSaving(false);
+    }
+  }
+
   function resetForm() {
-    setCustomer(''); setNote(''); setCart([]); setDiscountEnabled(false); setProductSearch(''); setCurrency('TRY');
+    setCustomer(''); setNote(''); setCart([]); setDiscountEnabled(false); setProductSearch(''); setCurrency('TRY'); setIrsaliyeMode(false);
   }
 
   function formatDate(ts: unknown) {
@@ -303,18 +337,31 @@ export default function SalesPage() {
                       <td style={{ color: '#888' }}>{s.items.length} kalem, {s.items.reduce((a, i) => a + i.qty, 0)} adet</td>
                       <td style={{ fontWeight: 700 }}>₺{s.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                       <td>
-                        {s.status === 'completed'
-                          ? <span className="badge badge-green">Tamamlandı</span>
-                          : s.status === 'pending'
-                          ? <span className="badge badge-amber">Bekliyor</span>
-                          : <span className="badge badge-red">İptal</span>
-                        }
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                          {s.status === 'completed'
+                            ? <span className="badge badge-green">Tamamlandı</span>
+                            : s.status === 'pending'
+                            ? <span className="badge badge-amber">Bekliyor</span>
+                            : <span className="badge badge-red">İptal</span>
+                          }
+                          {s.irsaliye === 'pending' && (
+                            <span className="badge badge-amber" style={{ background: 'rgba(234,179,8,.15)', color: '#ca8a04', border: '1px solid rgba(234,179,8,.3)' }}>📦 İrsaliye Bekliyor</span>
+                          )}
+                          {s.irsaliye === 'completed' && (
+                            <span className="badge badge-green" style={{ fontSize: 10 }}>✓ İrsaliye Tamam</span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ color: '#888', fontSize: 12 }}>{formatDate(s.date)}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           <button className="btn btn-secondary btn-sm" onClick={() => setDetailId(s.id!)}>Detay</button>
                           <button className="btn btn-secondary btn-sm" onClick={() => openSalePDF(s)} title="PDF İndir / Yazdır" style={{ color: '#E85D04' }}>PDF</button>
+                          {s.irsaliye === 'pending' && (
+                            <button className="btn btn-primary btn-sm" onClick={() => { setIrsaliyeSale(s); setConfirmed({}); }} style={{ background: 'rgba(234,179,8,.2)', color: '#ca8a04', border: '1px solid rgba(234,179,8,.4)' }}>
+                              <IconScan size={13} /> Sevki Onayla
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -339,7 +386,7 @@ export default function SalesPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', marginBottom: 4 }}>{s.customer}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 4 }}>{formatDate(s.date)}</div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--or)' }}>₺{s.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                     {s.status === 'completed'
                       ? <span className="badge badge-green">Tamamlandı</span>
@@ -347,9 +394,19 @@ export default function SalesPage() {
                       ? <span className="badge badge-amber">Bekliyor</span>
                       : <span className="badge badge-red">İptal</span>
                     }
+                    {s.irsaliye === 'pending' && (
+                      <span className="badge badge-amber" style={{ background: 'rgba(234,179,8,.15)', color: '#ca8a04' }}>📦 İrsaliye Bekliyor</span>
+                    )}
                   </div>
                 </div>
-                <button className="btn btn-secondary btn-sm" onClick={() => setDetailId(s.id!)}>Detay</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => setDetailId(s.id!)}>Detay</button>
+                  {s.irsaliye === 'pending' && (
+                    <button className="btn btn-primary btn-sm" onClick={() => { setIrsaliyeSale(s); setConfirmed({}); }} style={{ background: 'rgba(234,179,8,.2)', color: '#ca8a04', border: '1px solid rgba(234,179,8,.4)', whiteSpace: 'nowrap' }}>
+                      <IconScan size={13} /> Onayla
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -558,10 +615,38 @@ export default function SalesPage() {
               </div>
             </div>
 
+            {/* İrsaliye seçimi */}
+            <div style={{ marginBottom: 14, padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: .5 }}>Stok Çıkışı</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setIrsaliyeMode(false)}
+                  className={irsaliyeMode ? 'btn btn-secondary' : 'btn btn-primary'}
+                  style={{ flex: 1, fontSize: 13 }}
+                >
+                  Hemen Düş
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIrsaliyeMode(true)}
+                  className={irsaliyeMode ? 'btn btn-primary' : 'btn btn-secondary'}
+                  style={{ flex: 1, fontSize: 13 }}
+                >
+                  📦 Sevk İrsaliyesi
+                </button>
+              </div>
+              {irsaliyeMode && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#ca8a04', background: 'rgba(234,179,8,.1)', padding: '6px 10px', borderRadius: 6 }}>
+                  Stok, depocu irsaliyeyi onayladıktan sonra düşecek.
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => { setOpen(false); resetForm(); }}>İptal</button>
               <button className="btn btn-primary" onClick={save} disabled={saving || !customer.trim() || cart.length === 0}>
-                {saving ? 'Kaydediliyor...' : 'Satışı Tamamla'}
+                {saving ? 'Kaydediliyor...' : irsaliyeMode ? '📦 İrsaliye Oluştur' : 'Satışı Tamamla'}
               </button>
             </div>
           </div>
@@ -605,6 +690,113 @@ export default function SalesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Sevk İrsaliyesi Onay Modalı ─────────────────────────────────────── */}
+      {irsaliyeSale && (() => {
+        const sale = irsaliyeSale;
+        const allConfirmed = sale.items.every(i => confirmed[i.productId]);
+
+        function handleScan(val: string) {
+          setIrsaliyeScanner(false);
+          const matched = sale.items.find(i => {
+            const p = products.find(x => x.id === i.productId);
+            return p?.barcode === val;
+          });
+          if (matched) {
+            setConfirmed(c => ({ ...c, [matched.productId]: true }));
+          } else {
+            // Tarattığı barkod bu irsaliyede yok — işaretle ama uyar
+            alert(`⚠️ Bu barkod (${val}) bu irsaliyede yer almıyor.`);
+          }
+        }
+
+        return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setIrsaliyeSale(null)}>
+            <div className="modal-box" style={{ maxWidth: 520 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 18px 14px', borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>📦 Sevk İrsaliyesi Onayı</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{sale.customer} · {sale.items.reduce((s, i) => s + i.qty, 0)} adet</div>
+                </div>
+                <button onClick={() => setIrsaliyeSale(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={18} /></button>
+              </div>
+
+              <div style={{ padding: '14px 18px' }}>
+                <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--text-3)' }}>
+                  Her ürünün barkoduну okutarak veya manuel olarak onaylayın. Tüm ürünler onaylandıktan sonra stok düşecek.
+                </div>
+
+                {/* Ürün listesi */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {sale.items.map(item => {
+                    const p = products.find(x => x.id === item.productId);
+                    const isOk = confirmed[item.productId];
+                    return (
+                      <div key={item.productId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: isOk ? 'rgba(74,222,128,.08)' : 'var(--surface-2)', border: `1px solid ${isOk ? 'rgba(74,222,128,.3)' : 'var(--border)'}`, borderRadius: 10, transition: 'all .15s' }}>
+                        {p?.photo
+                          ? <img src={p.photo} alt="" style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 7, background: '#fff', flexShrink: 0 }} />
+                          : <div style={{ width: 44, height: 44, background: 'var(--surface-3)', borderRadius: 7, flexShrink: 0 }} />
+                        }
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{item.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{p?.code || ''} · {item.qty} adet · ₺{item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                          {p?.barcode && <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'monospace' }}>Barkod: {p.barcode}</div>}
+                        </div>
+                        <button
+                          onClick={() => setConfirmed(c => ({ ...c, [item.productId]: !isOk }))}
+                          style={{ width: 36, height: 36, borderRadius: 8, border: `2px solid ${isOk ? '#4ADE80' : 'var(--border)'}`, background: isOk ? 'rgba(74,222,128,.15)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                        >
+                          {isOk ? <IconCheck size={18} color="#4ADE80" /> : <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--border)', display: 'block' }} />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Barkod okut butonu */}
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%', marginBottom: 12, gap: 8 }}
+                  onClick={() => setIrsaliyeScanner(true)}
+                >
+                  <IconScan size={16} color="var(--or)" /> Barkod Okut (Otomatik Onayla)
+                </button>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setIrsaliyeSale(null)}>Vazgeç</button>
+                  <button
+                    className="btn btn-primary"
+                    style={{ flex: 2 }}
+                    disabled={!allConfirmed || irsaliyeSaving}
+                    onClick={completeIrsaliye}
+                  >
+                    {irsaliyeSaving ? 'Kaydediliyor...' : !allConfirmed ? `${sale.items.filter(i => !confirmed[i.productId]).length} ürün kaldı` : '✓ Sevki Tamamla & Stok Düş'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {irsaliyeScanner && (
+        <BarcodeScanner
+          onDetect={val => {
+            setIrsaliyeScanner(false);
+            if (!irsaliyeSale) return;
+            const matched = irsaliyeSale.items.find(i => {
+              const p = products.find(x => x.id === i.productId);
+              return p?.barcode === val;
+            });
+            if (matched) {
+              setConfirmed(c => ({ ...c, [matched.productId]: true }));
+            } else {
+              alert(`⚠️ Bu barkod (${val}) bu irsaliyede yer almıyor.`);
+            }
+          }}
+          onClose={() => setIrsaliyeScanner(false)}
+        />
       )}
     </>
   );

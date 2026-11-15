@@ -40,6 +40,7 @@ export interface Sale {
   note?: string;
   discountRate?: number;
   by?: string;
+  irsaliye?: 'pending' | 'completed' | 'none';
 }
 
 export interface StockMove {
