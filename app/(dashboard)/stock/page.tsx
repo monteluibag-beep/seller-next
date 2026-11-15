@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   collection, getDocs, addDoc, serverTimestamp, query, orderBy,
   doc, updateDoc, increment, writeBatch,
@@ -27,7 +28,9 @@ interface ImportRow {
   delta?: number;
 }
 
-export default function StockPage() {
+function StockPageInner() {
+  const searchParams = useSearchParams();
+
   const [moves, setMoves] = useState<StockMove[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +62,14 @@ export default function StockPage() {
   const [lowStockOpen, setLowStockOpen] = useState(false);
 
   useEffect(() => { load(); loadProducts(); }, []);
+
+  useEffect(() => {
+    if (searchParams.get('add') === '1') {
+      setForm({ productId: '', type: 'in', qty: 1, note: '' });
+      setProductSearch('');
+      setOpen(true);
+    }
+  }, [searchParams]);
 
   async function load() {
     setLoading(true);
@@ -809,5 +820,13 @@ export default function StockPage() {
         />
       )}
     </>
+  );
+}
+
+export default function StockPage() {
+  return (
+    <Suspense fallback={null}>
+      <StockPageInner />
+    </Suspense>
   );
 }

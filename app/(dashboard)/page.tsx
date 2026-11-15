@@ -820,11 +820,11 @@ function DashboardPageInner() {
             <div className="stat-value" style={{ color: '#8B5CF6' }}>{loading ? '—' : stats?.noCostCount ?? 0}</div>
             <div className="stat-sub">fiyat bekliyor · görüntüle →</div>
           </Link>
-          <Link href="/stock" className="stat-card" style={{ borderColor: 'rgba(20,184,166,.25)', background: 'rgba(20,184,166,.05)', textDecoration: 'none', cursor: 'pointer' }}>
+          <Link href="/stock?add=1" className="stat-card" style={{ borderColor: 'rgba(20,184,166,.25)', background: 'rgba(20,184,166,.05)', textDecoration: 'none', cursor: 'pointer' }}>
             <div className="stat-icon" style={{ background: 'rgba(20,184,166,.15)', color: '#14b8a6' }}><IconPackage size={20} /></div>
             <div className="stat-label">Depo Hareketleri</div>
             <div className="stat-value" style={{ color: '#14b8a6', fontSize: 16, paddingTop: 4 }}>Stok Giriş / Çıkış</div>
-            <div className="stat-sub">hareketleri görüntüle →</div>
+            <div className="stat-sub">tıkla, hareketi hemen ekle →</div>
           </Link>
         </div>
 
