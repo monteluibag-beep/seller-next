@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
@@ -9,7 +9,7 @@ import type { Product, Category, ProductVariant, ProductOption, MainSettings, Di
 import { getDoc } from 'firebase/firestore';
 import {
   IconPlus, IconSearch, IconEdit, IconTrash, IconPhoto, IconCamera, IconX, IconRefresh,
-  IconDownload, IconScan, IconCopy, IconUpload, IconTemplate, IconChevronDown, IconEye, IconEyeOff,
+  IconDownload, IconScan, IconCopy, IconUpload, IconTemplate, IconChevronDown, IconEye, IconEyeOff, IconTag,
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useRates } from '@/hooks/useRates';
@@ -180,6 +180,7 @@ function MobInline({ pid, field, ie, onStart, onSave, onCancel, onChange, label,
 }
 
 function ProductsPageInner() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1644,7 +1645,12 @@ function ProductsPageInner() {
                   <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-1)', lineHeight: 1.3, marginBottom: 6 }}>{p.name}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                     {p.catName && <span className="badge badge-blue">{p.catName}</span>}
-                    {p.code && <code style={{ fontSize: 10, background: 'var(--surface-3)', padding: '2px 7px', borderRadius: 4, color: 'var(--text-2)' }}>{p.code}</code>}
+                    {p.code && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <code style={{ fontSize: 10, background: 'var(--surface-3)', padding: '2px 7px', borderRadius: 4, color: 'var(--text-2)' }}>{p.code}</code>
+                        <button title="Kopyala" onClick={() => navigator.clipboard.writeText(p.code || '')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-3)', display: 'flex', alignItems: 'center' }}><IconCopy size={12} /></button>
+                      </span>
+                    )}
                     {p.variants && p.variants.length > 0 && (
                       <span style={{ fontSize: 10, background: 'rgba(139,92,246,.12)', color: '#8B5CF6', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>{p.variants.length} varyant</span>
                     )}
@@ -1689,6 +1695,7 @@ function ProductsPageInner() {
                 <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Barkod</span>
                   <code style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', letterSpacing: 1 }}>{p.barcode}</code>
+                  <button title="Kopyala" onClick={() => navigator.clipboard.writeText(p.barcode || '')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-3)', display: 'flex', alignItems: 'center' }}><IconCopy size={13} /></button>
                 </div>
               )}
 
@@ -1709,7 +1716,10 @@ function ProductsPageInner() {
               )}
 
               {/* Aksiyonlar */}
-              <div style={{ display: 'flex', gap: 8, padding: '14px 20px' }}>
+              <div style={{ display: 'flex', gap: 8, padding: '14px 20px', flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { setDetailProduct(null); router.push('/?fiyatsor=' + p.id); }}>
+                  <IconTag size={15} /> Fiyat Sor
+                </button>
                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setDetailProduct(null); openEdit(p); }}>
                   <IconEdit size={15} /> Düzenle
                 </button>

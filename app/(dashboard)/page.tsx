@@ -1,6 +1,7 @@
 'use client';
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, IconX, IconSearch, IconTag, IconChevronDown } from '@tabler/icons-react';
 import Link from 'next/link';
@@ -61,10 +62,10 @@ function getDiscountRate(qty: number, tiers: DiscountTier[]): number {
   return sorted.find(t => qty >= t.qty)?.rate ?? 0;
 }
 
-function PriceModal({ products, onClose, role }: { products: Product[]; onClose: () => void; role: string | null }) {
+function PriceModal({ products, onClose, role, initialProduct }: { products: Product[]; onClose: () => void; role: string | null; initialProduct?: Product | null }) {
   const { rates } = useRates();
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Product | null>(null);
+  const [search, setSearch] = useState(initialProduct?.name || '');
+  const [selected, setSelected] = useState<Product | null>(initialProduct || null);
   const [qty, setQty] = useState('1');
   const [showResult, setShowResult] = useState(false);
   const [tiers, setTiers] = useState<DiscountTier[]>(DEFAULT_DISCOUNTS);
@@ -608,7 +609,7 @@ function getTimestamp(ts: unknown): Date | null {
   return new Date(ts as string);
 }
 
-export default function DashboardPage() {
+function DashboardPageInner() {
   const { user, role } = useAuth();
   const { rates } = useRates();
   const usdRate = rates.USD || 1;
@@ -618,6 +619,8 @@ export default function DashboardPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [stockModal, setStockModal] = useState(false);
   const [priceModal, setPriceModal] = useState(false);
+  const [priceModalInitProduct, setPriceModalInitProduct] = useState<Product | null>(null);
+  const searchParams = useSearchParams();
   // İmalat fiyatı girişi
   const [costInputs, setCostInputs] = useState<Record<string, string>>({});
   const [savingCost, setSavingCost] = useState<string | null>(null);
@@ -634,6 +637,17 @@ export default function DashboardPage() {
     document.addEventListener('open-price-modal', handler);
     return () => document.removeEventListener('open-price-modal', handler);
   }, []);
+
+  useEffect(() => {
+    const fiyatsorId = searchParams.get('fiyatsor');
+    if (fiyatsorId && allProducts.length > 0) {
+      const found = allProducts.find(p => p.id === fiyatsorId);
+      if (found) {
+        setPriceModalInitProduct(found);
+        setPriceModal(true);
+      }
+    }
+  }, [searchParams, allProducts]);
 
   useEffect(() => {
     async function loadStats() {
@@ -907,7 +921,7 @@ export default function DashboardPage() {
         )}
 
         {/* Price Modal */}
-        {priceModal && <PriceModal products={allProducts} onClose={() => setPriceModal(false)} role={role} />}
+        {priceModal && <PriceModal products={allProducts} onClose={() => { setPriceModal(false); setPriceModalInitProduct(null); }} role={role} initialProduct={priceModalInitProduct} />}
 
         {/* Stock Modal */}
         {stockModal && <StockModal products={allProducts} onClose={() => setStockModal(false)} />}
@@ -948,5 +962,13 @@ export default function DashboardPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardPageInner />
+    </Suspense>
   );
 }
