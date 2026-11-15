@@ -226,7 +226,8 @@ export default function SalesPage() {
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; background: #fff; }
-  .page { width: 210mm; min-height: 297mm; padding: 14mm 16mm 20mm; margin: 0 auto; position: relative; }
+  @page { size: A4 portrait; margin: 0; }
+  .page { width: 210mm; height: 297mm; padding: 12mm 15mm 10mm; margin: 0 auto; overflow: hidden; display: flex; flex-direction: column; }
 
   /* Header */
   .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 3px solid #1a1a2e; margin-bottom: 18px; }
@@ -262,19 +263,20 @@ export default function SalesPage() {
   .total-strip td { font-weight: 700; font-size: 13px; padding: 10px 12px; }
 
   /* Signatures */
-  .sig-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 28px; }
+  .sig-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px; }
   .sig-box { border: 1px solid #ccc; border-radius: 6px; padding: 10px 12px; }
-  .sig-box-title { font-size: 9px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 40px; }
+  .sig-box-title { font-size: 9px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 28px; }
   .sig-line { border-top: 1px solid #aaa; padding-top: 6px; font-size: 10px; color: #888; }
 
   /* Note */
-  .note-box { border: 1px dashed #ccc; border-radius: 6px; padding: 10px 14px; margin-top: 20px; }
+  .note-box { border: 1px dashed #ccc; border-radius: 6px; padding: 8px 12px; margin-top: 12px; }
   .note-label { font-size: 9px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 6px; }
   .note-lines { display: flex; flex-direction: column; gap: 8px; }
   .note-line { border-bottom: 1px solid #eee; height: 18px; }
 
   /* Footer */
-  .footer { position: absolute; bottom: 10mm; left: 16mm; right: 16mm; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd; padding-top: 8px; }
+  .content-grow { flex: 1; overflow: hidden; }
+  .footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd; padding-top: 6px; }
   .footer-left  { font-size: 10px; color: #888; }
   .footer-right { font-size: 10px; color: #888; }
   .orange { color: #E85D04; }
@@ -284,7 +286,7 @@ export default function SalesPage() {
 
   @media print {
     body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-    .page { padding: 10mm 14mm 18mm; }
+    .page { height: 100vh; }
   }
 </style>
 </head>
