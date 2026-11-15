@@ -579,7 +579,7 @@ export default function SalesPage() {
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           <button className="btn btn-secondary btn-sm" onClick={() => setDetailId(s.id!)}>Detay</button>
                           <button className="btn btn-secondary btn-sm" onClick={() => openSalePDF(s)} title="Satış fişi PDF" style={{ color: '#E85D04' }}>PDF</button>
-                          <button className="btn btn-secondary btn-sm" onClick={() => openIrsaliyePDF(s)} title="Sevk irsaliyesi PDF" style={{ color: '#1a1a2e' }}>📦 İrsaliye</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => openIrsaliyePDF(s)} title="Sevk irsaliyesi PDF">📦 İrsaliye</button>
                           {s.irsaliye === 'pending' && (
                             <button className="btn btn-primary btn-sm" onClick={() => { setIrsaliyeSale(s); setConfirmed({}); }} style={{ background: 'rgba(234,179,8,.2)', color: '#ca8a04', border: '1px solid rgba(234,179,8,.4)' }}>
                               <IconScan size={13} /> Sevki Onayla
@@ -907,7 +907,7 @@ export default function SalesPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
               <button className="btn btn-secondary" onClick={() => setDetailId(null)}>Kapat</button>
-              <button className="btn btn-secondary" onClick={() => openIrsaliyePDF(detailSale)} style={{ color: '#1a1a2e', border: '1px solid #ccc' }}>
+              <button className="btn btn-secondary" onClick={() => openIrsaliyePDF(detailSale)}>
                 📦 İrsaliye PDF
               </button>
               <button className="btn btn-primary" onClick={() => openSalePDF(detailSale)} style={{ background: '#E85D04' }}>
