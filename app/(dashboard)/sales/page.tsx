@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import {
   collection, getDocs, addDoc, serverTimestamp, query, orderBy,
-  doc, updateDoc, increment,
+  doc, updateDoc, increment, deleteDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Sale, SaleItem, Product } from '@/types';
@@ -29,7 +29,7 @@ function getDiscount(qty: number): number {
 interface CartItem extends SaleItem { cost: number; listPrice: number; }
 
 export default function SalesPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { rates } = useRates();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,6 +46,10 @@ export default function SalesPage() {
   const [salePage, setSalePage] = useState(1);
   const SALE_PAGE_SIZE = 20;
   const [irsaliyeMode, setIrsaliyeMode] = useState(false);
+  // Satış silme
+  const [deleteConfirm, setDeleteConfirm] = useState<Sale | null>(null);
+  const [restoreStock, setRestoreStock] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   // İrsaliye onay modalı
   const [irsaliyeSale, setIrsaliyeSale] = useState<Sale | null>(null);
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({}); // productId → confirmed
@@ -162,6 +166,28 @@ export default function SalesPage() {
       loadProducts();
     } finally {
       setIrsaliyeSaving(false);
+    }
+  }
+
+  async function deleteSale() {
+    if (!deleteConfirm?.id) return;
+    setDeleting(true);
+    try {
+      if (restoreStock && deleteConfirm.irsaliye !== 'pending') {
+        for (const item of deleteConfirm.items) {
+          await updateDoc(doc(db, 'products', item.productId), { stock: increment(item.qty) });
+          await addDoc(collection(db, 'stock_moves'), {
+            productId: item.productId, productName: item.name,
+            type: 'in', qty: item.qty,
+            note: `Satış silindi: ${deleteConfirm.customer}`, date: serverTimestamp(),
+          });
+        }
+      }
+      await deleteDoc(doc(db, 'sales', deleteConfirm.id));
+      setSales(prev => prev.filter(s => s.id !== deleteConfirm.id));
+      setDeleteConfirm(null);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -585,6 +611,11 @@ export default function SalesPage() {
                               <IconScan size={13} /> Sevki Onayla
                             </button>
                           )}
+                          {role === 'admin' && (
+                            <button className="btn btn-sm" onClick={() => { setDeleteConfirm(s); setRestoreStock(true); }} style={{ background: 'rgba(248,113,113,.1)', color: '#F87171', padding: '0 10px' }} title="Satışı sil">
+                              <IconTrash size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -629,6 +660,11 @@ export default function SalesPage() {
                       <IconScan size={13} /> Onayla
                     </button>
                   )}
+                  {role === 'admin' && (
+                    <button className="btn btn-sm" onClick={() => { setDeleteConfirm(s); setRestoreStock(true); }} style={{ background: 'rgba(248,113,113,.1)', color: '#F87171', padding: '0 10px' }} title="Satışı sil">
+                      <IconTrash size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -651,10 +687,12 @@ export default function SalesPage() {
                 <label className="form-label">Müşteri Adı *</label>
                 <input className="form-input" value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Müşteri adı" />
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Not</label>
-                <input className="form-input" value={note} onChange={e => setNote(e.target.value)} placeholder="Opsiyonel not" />
-              </div>
+              {!irsaliyeMode && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Not</label>
+                  <input className="form-input" value={note} onChange={e => setNote(e.target.value)} placeholder="Opsiyonel not" />
+                </div>
+              )}
             </div>
 
             {/* Para Birimi */}
@@ -860,9 +898,21 @@ export default function SalesPage() {
                 </button>
               </div>
               {irsaliyeMode && (
-                <div style={{ marginTop: 8, fontSize: 12, color: '#ca8a04', background: 'rgba(234,179,8,.1)', padding: '6px 10px', borderRadius: 6 }}>
-                  Stok, depocu irsaliyeyi onayladıktan sonra düşecek.
-                </div>
+                <>
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#ca8a04', background: 'rgba(234,179,8,.1)', padding: '6px 10px', borderRadius: 6 }}>
+                    Stok, depocu irsaliyeyi onayladıktan sonra düşecek.
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>İrsaliye Notu</label>
+                    <input
+                      className="form-input"
+                      value={note}
+                      onChange={e => setNote(e.target.value)}
+                      placeholder="Teslimat adresi, açıklama vb."
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
+                </>
               )}
             </div>
 
@@ -1023,6 +1073,38 @@ export default function SalesPage() {
           }}
           onClose={() => setIrsaliyeScanner(false)}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !deleting && setDeleteConfirm(null)}>
+          <div className="modal-box" style={{ maxWidth: 420 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#DC2626' }}>Satışı Sil</h3>
+              <button onClick={() => setDeleteConfirm(null)} disabled={deleting} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa' }}><IconX size={20} /></button>
+            </div>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>
+              <strong>{deleteConfirm.customer}</strong> müşterisine ait bu satış kaydı silinecek. Bu işlem geri alınamaz.
+            </p>
+            {deleteConfirm.irsaliye === 'pending' ? (
+              <div style={{ background: 'rgba(234,179,8,.1)', border: '1px solid rgba(234,179,8,.3)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#ca8a04', marginBottom: 16 }}>
+                ℹ️ İrsaliye henüz onaylanmadı, stok zaten düşmedi.
+              </div>
+            ) : (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14, marginBottom: 16 }}>
+                <input type="checkbox" checked={restoreStock} onChange={e => setRestoreStock(e.target.checked)} />
+                Stok geri yüklensin mi? ({deleteConfirm.items.reduce((s, i) => s + i.qty, 0)} adet ürün)
+              </label>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} disabled={deleting}>İptal</button>
+              <button className="btn" onClick={deleteSale} disabled={deleting}
+                style={{ background: '#DC2626', color: '#fff', opacity: deleting ? 0.6 : 1 }}>
+                {deleting ? 'Siliniyor…' : 'Sil'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

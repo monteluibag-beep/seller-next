@@ -88,9 +88,18 @@ function StockPageInner() {
 
   const filtered = moves.filter(m => filter === 'all' || m.type === filter);
   const pagedMoves = filtered.slice((movePage - 1) * STOCK_PAGE_SIZE, movePage * STOCK_PAGE_SIZE);
-  const sortedProducts = products.sort((a, b) => a.stock - b.stock);
+  const sortedProducts = [...products].sort((a, b) => a.stock - b.stock);
   const pagedProducts = sortedProducts.slice((stockPage - 1) * STOCK_PAGE_SIZE, stockPage * STOCK_PAGE_SIZE);
   const lowStock = products.filter(p => p.stock <= 10).sort((a, b) => a.stock - b.stock);
+
+  // Summary stats
+  const totalStockQty = products.reduce((s, p) => s + (p.stock || 0), 0);
+  const totalCostTL = products.reduce((s, p) => s + (p.stock || 0) * (p.cost || 0), 0);
+  const totalListTL = products.reduce((s, p) => s + (p.stock || 0) * (p.list || 0), 0);
+  const totalCostUSD = products.reduce((s, p) => s + (p.stock || 0) * (p.costUsd || 0), 0);
+  const totalListUSD = products.reduce((s, p) => s + (p.stock || 0) * (p.listUsd || 0), 0);
+  const top10Stock = [...products].sort((a, b) => (b.stock || 0) - (a.stock || 0)).slice(0, 10);
+  const maxStock = top10Stock[0]?.stock || 1;
   const selectedProduct = products.find(p => p.id === form.productId);
 
   const productSearchFiltered = products.filter(p =>
@@ -415,6 +424,61 @@ function StockPageInner() {
       </div>
 
       <div className="page-content">
+        {/* Summary Cards */}
+        {!loading && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
+            <div className="card" style={{ padding: '14px 18px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.06em', marginBottom: 4 }}>TOPLAM STOK</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)' }}>{totalStockQty.toLocaleString('tr-TR')}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>adet</div>
+            </div>
+            <div className="card" style={{ padding: '14px 18px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.06em', marginBottom: 4 }}>MAL MALİYETİ</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#E85D04' }}>₺{totalCostTL.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</div>
+              {totalCostUSD > 0 && (
+                <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>${totalCostUSD.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</div>
+              )}
+            </div>
+            <div className="card" style={{ padding: '14px 18px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.06em', marginBottom: 4 }}>SATIŞ DEĞERİ</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a' }}>₺{totalListTL.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</div>
+              {totalListUSD > 0 && (
+                <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>${totalListUSD.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</div>
+              )}
+            </div>
+            <div className="card" style={{ padding: '14px 18px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.06em', marginBottom: 4 }}>KAR POTANSİYELİ</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#7c3aed' }}>₺{(totalListTL - totalCostTL).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                {totalCostTL > 0 ? `%${(((totalListTL - totalCostTL) / totalCostTL) * 100).toFixed(1)} marj` : ''}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top 10 Stok */}
+        {!loading && top10Stock.length > 0 && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card-header">
+              <span style={{ fontWeight: 700, fontSize: 14 }}>En Yüksek Stoklu 10 Ürün</span>
+            </div>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {top10Stock.map((p, i) => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 20, fontSize: 12, color: 'var(--text-3)', textAlign: 'right', flexShrink: 0 }}>#{i + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                    <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, marginTop: 4, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${((p.stock || 0) / maxStock) * 100}%`, background: i === 0 ? '#E85D04' : i < 3 ? '#f97316' : '#6366f1', borderRadius: 3, transition: 'width .4s' }} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0, minWidth: 48, textAlign: 'right' }}>{(p.stock || 0).toLocaleString('tr-TR')} ad</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {lowStock.length > 0 && (
           <div style={{ border: '1px solid rgba(239,68,68,.2)', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
             <button
