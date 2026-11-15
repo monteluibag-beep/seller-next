@@ -12,6 +12,7 @@ import {
   IconDownload, IconUpload, IconCheck, IconScan, IconEdit, IconDeviceFloppy,
 } from '@tabler/icons-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
+import { useAuth } from '@/hooks/useAuth';
 import * as XLSX from 'xlsx';
 import Pagination from '@/components/Pagination';
 
@@ -31,6 +32,7 @@ interface ImportRow {
 function StockPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { role } = useAuth();
 
   const [moves, setMoves] = useState<StockMove[]>([]);
 
@@ -425,7 +427,7 @@ function StockPageInner() {
 
       <div className="page-content">
         {/* Summary Cards */}
-        {!loading && (
+        {!loading && role !== 'sales' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
             <div className="card" style={{ padding: '14px 18px' }}>
               <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.06em', marginBottom: 4 }}>TOPLAM STOK</div>
@@ -457,7 +459,7 @@ function StockPageInner() {
         )}
 
         {/* Top 10 Stok */}
-        {!loading && top10Stock.length > 0 && (
+        {!loading && role !== 'sales' && top10Stock.length > 0 && (
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-header">
               <span style={{ fontWeight: 700, fontSize: 14 }}>En Yüksek Stoklu 10 Ürün</span>
