@@ -209,6 +209,12 @@ function ProductsPageInner() {
   const [bulkSaving, setBulkSaving] = useState(false);
   // Ürün detay kartı
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+  // Stok ekle (barkod okutunca mevcut ürün)
+  const [stockAddProduct, setStockAddProduct] = useState<Product | null>(null);
+  const [stockAddQty, setStockAddQty] = useState('1');
+  const [stockAddSaving, setStockAddSaving] = useState(false);
+  // Yeni ürün ekle dropdown (desktop)
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   // Resim hover popup
   const [hoverImg, setHoverImg] = useState<{ src: string; x: number; y: number } | null>(null);
   // Global opsiyonlar (settings'ten)
@@ -786,14 +792,15 @@ function ProductsPageInner() {
       setScanTarget(null);
     } else if (scanTarget === 'add') {
       setScanTarget(null);
-      // Barkod sistemde var mı?
       const existing = products.find(p => p.barcode === val);
       if (existing) {
-        showToast(`⚠️ Bu barkod zaten kayıtlı: "${existing.name}"`);
-        return;
+        // Ürün var → stok ekle modalını aç
+        setStockAddProduct(existing);
+        setStockAddQty('1');
+      } else {
+        // Yok → yeni ürün formunu barkodla aç
+        openAdd(val);
       }
-      // Yok → yeni ürün formunu barkodla aç
-      openAdd(val);
     }
   }
 
@@ -829,9 +836,23 @@ function ProductsPageInner() {
               <IconRefresh size={16} /> <span className="btn-label">Kodu Düzelt</span>
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => openAdd()}>
-            <IconPlus size={16} /> <span className="btn-label">Yeni Ürün</span>
-          </button>
+          <div style={{ position: 'relative' }}>
+            {addMenuOpen && <div onClick={() => setAddMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />}
+            <button className="btn btn-primary" onClick={() => setAddMenuOpen(v => !v)}>
+              <IconPlus size={16} /> <span className="btn-label">Yeni Ürün</span>
+            </button>
+            {addMenuOpen && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,.15)', zIndex: 100, minWidth: 180, overflow: 'hidden' }}>
+                <button onClick={() => { setAddMenuOpen(false); setScanTarget('add'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-1)', fontSize: 14, fontWeight: 600 }}>
+                  <IconScan size={17} color="var(--or)" /> Barkod Okut
+                </button>
+                <div style={{ height: 1, background: 'var(--border)' }} />
+                <button onClick={() => { setAddMenuOpen(false); openAdd(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-1)', fontSize: 14, fontWeight: 600 }}>
+                  <IconPlus size={17} /> Manuel Giriş
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1095,6 +1116,61 @@ function ProductsPageInner() {
           <IconPlus size={22} />
         </button>
       </div>
+
+      {/* Stok Ekle Modalı (barkod okutunca mevcut ürün) */}
+      {stockAddProduct && (() => {
+        const p = stockAddProduct;
+        async function saveStockAdd() {
+          const qty = parseInt(stockAddQty) || 0;
+          if (qty <= 0) return;
+          setStockAddSaving(true);
+          try {
+            const newStock = (p.stock || 0) + qty;
+            await updateDoc(doc(db, 'products', p.id!), { stock: newStock });
+            setProducts(prev => prev.map(x => x.id === p.id ? { ...x, stock: newStock } : x));
+            showToast(`✅ "${p.name}" — ${qty} adet stok eklendi`);
+            setStockAddProduct(null);
+          } finally {
+            setStockAddSaving(false);
+          }
+        }
+        return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setStockAddProduct(null)}>
+            <div className="modal-box" style={{ maxWidth: 400 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 18px 14px', borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>Stok Ekle</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Barkod ile bulunan ürün</div>
+                </div>
+                <button onClick={() => setStockAddProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><IconX size={18} /></button>
+              </div>
+              <div style={{ padding: '16px 18px' }}>
+                {/* Ürün bilgisi */}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 12, background: 'var(--surface-2)', borderRadius: 10, marginBottom: 16 }}>
+                  {p.photo && <img src={p.photo} alt="" style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: '#fff' }} />}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>{p.name}</div>
+                    {p.code && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{p.code}</div>}
+                    <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>Mevcut stok: <strong>{p.stock ?? 0}</strong></div>
+                  </div>
+                </div>
+                {/* Miktar */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>Eklenecek Miktar</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={() => setStockAddQty(v => String(Math.max(1, (parseInt(v) || 1) - 1)))} style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--surface-3)', border: '1px solid var(--border)', cursor: 'pointer', fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>−</button>
+                    <input type="number" min={1} value={stockAddQty} onChange={e => setStockAddQty(e.target.value)} style={{ flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 800, padding: '8px 0', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-1)' }} />
+                    <button onClick={() => setStockAddQty(v => String((parseInt(v) || 0) + 1))} style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--surface-3)', border: '1px solid var(--border)', cursor: 'pointer', fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>+</button>
+                  </div>
+                </div>
+                <button className="btn btn-primary" style={{ width: '100%' }} onClick={saveStockAdd} disabled={stockAddSaving}>
+                  {stockAddSaving ? 'Kaydediliyor...' : `Stok Ekle (+${stockAddQty || 0})`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toast */}
       {toast && (
