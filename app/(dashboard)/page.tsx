@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, IconX, IconSearch, IconTag, IconChevronDown } from '@tabler/icons-react';
+import { IconStack2, IconReceipt, IconFileText, IconAlertTriangle, IconTool, IconX, IconSearch, IconTag, IconChevronDown, IconPackage } from '@tabler/icons-react';
 import Link from 'next/link';
 import { collection, getDocs, query, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -819,6 +819,12 @@ function DashboardPageInner() {
             <div className="stat-label">İmalat Fiyatı Eksik</div>
             <div className="stat-value" style={{ color: '#8B5CF6' }}>{loading ? '—' : stats?.noCostCount ?? 0}</div>
             <div className="stat-sub">fiyat bekliyor · görüntüle →</div>
+          </Link>
+          <Link href="/stock" className="stat-card" style={{ borderColor: 'rgba(20,184,166,.25)', background: 'rgba(20,184,166,.05)', textDecoration: 'none', cursor: 'pointer' }}>
+            <div className="stat-icon" style={{ background: 'rgba(20,184,166,.15)', color: '#14b8a6' }}><IconPackage size={20} /></div>
+            <div className="stat-label">Depo Hareketleri</div>
+            <div className="stat-value" style={{ color: '#14b8a6', fontSize: 16, paddingTop: 4 }}>Stok Giriş / Çıkış</div>
+            <div className="stat-sub">hareketleri görüntüle →</div>
           </Link>
         </div>
 
