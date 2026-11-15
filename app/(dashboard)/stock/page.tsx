@@ -541,7 +541,7 @@ function StockPageInner() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedMoves.map(m => (
+                  {filtered.slice(0, 4).map(m => (
                     <tr key={m.id}>
                       <td>
                         {m.type === 'in'
@@ -560,7 +560,6 @@ function StockPageInner() {
                 </tbody>
               </table>
             )}
-            <Pagination page={movePage} total={filtered.length} pageSize={STOCK_PAGE_SIZE} onChange={p => { setMovePage(p); window.scrollTo(0,0); }} />
           </div>
         </div>
 
